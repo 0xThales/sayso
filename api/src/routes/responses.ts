@@ -1,8 +1,10 @@
 import { Hono } from "hono";
 import { eq, desc, and } from "drizzle-orm";
+import { streamSSE } from "hono/streaming";
 import type { Db } from "../db/index.js";
 import { schema } from "../db/index.js";
 import { clerkAuth } from "../middleware/auth.js";
+import { publishFormResponseCreated, subscribeToFormResponses } from "../realtime/responses.js";
 
 type Env = { Variables: { db: Db; userId: string } };
 
@@ -39,7 +41,63 @@ responses.post("/:slug/responses", async (c) => {
     })
     .returning();
 
+  await publishFormResponseCreated(form.id, response);
+
   return c.json(response, 201);
+});
+
+// ── GET /forms/:slug/responses/stream — Live response events (owner only) ───
+
+responses.get("/:slug/responses/stream", clerkAuth, async (c) => {
+  const db = c.get("db");
+  const userId = c.get("userId");
+  const slug = c.req.param("slug");
+
+  const [form] = await db
+    .select({ id: schema.forms.id })
+    .from(schema.forms)
+    .where(and(eq(schema.forms.slug, slug), eq(schema.forms.userId, userId)))
+    .limit(1);
+
+  if (!form) return c.json({ error: "Form not found" }, 404);
+
+  return streamSSE(c, async (stream) => {
+    let active = true;
+
+    const unsubscribe = subscribeToFormResponses(form.id, async (event) => {
+      if (!active) return;
+      await stream.writeSSE({
+        event: event.type,
+        id: event.response.id,
+        data: JSON.stringify({
+          response: {
+            ...event.response,
+            createdAt: event.response.createdAt.toISOString(),
+            completedAt: event.response.completedAt?.toISOString() ?? null,
+          },
+        }),
+      });
+    });
+
+    stream.onAbort(() => {
+      active = false;
+      unsubscribe();
+    });
+
+    await stream.writeSSE({
+      event: "connected",
+      data: JSON.stringify({ ok: true, slug }),
+    });
+
+    while (active) {
+      await stream.sleep(15000);
+      if (!active) break;
+      await stream.writeSSE({
+        event: "ping",
+        data: JSON.stringify({ ts: Date.now() }),
+      });
+    }
+  });
 });
 
 // ── GET /forms/:slug/responses — List responses (owner only) ───────────────
