@@ -8,7 +8,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { getSignedUrl } from "@/lib/elevenlabs";
 import { fetchForm, submitResponse, FormNotFoundError } from "@/lib/api";
-import { buildAgentPrompt } from "@/lib/prompt";
+import { buildAgentFirstMessage, buildAgentPrompt } from "@/lib/prompt";
 import type { Form } from "@/types/forms";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -23,8 +23,8 @@ type SaveAnswerParams = {
   fieldId?: string;
   field?: string;
   questionId?: string;
-  value?: string;
-  answer?: string;
+  value?: unknown;
+  answer?: unknown;
 };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -35,6 +35,21 @@ function formatStatus(status: string) {
 
 function createInitialAnswers(form: Form) {
   return Object.fromEntries(form.fields.map((f) => [f.id, ""]));
+}
+
+function normalizeAnswerValue(value: unknown): string {
+  if (value == null) return "";
+  if (typeof value === "string") return value.trim();
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => normalizeAnswerValue(item))
+      .filter(Boolean)
+      .join(", ");
+  }
+  return String(value).trim();
 }
 
 // ── Shared shell ─────────────────────────────────────────────────────────────
@@ -353,6 +368,8 @@ function VoiceFormCanvas({ form }: { form: Form }) {
   const answersRef = useRef<Record<string, string>>(createInitialAnswers(form));
   const startTimeRef = useRef<number | null>(null);
   const slugRef = useRef(form.slug);
+  const isSubmittingRef = useRef(false);
+  const isCompletedRef = useRef(false);
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([
     {
       id: "system-ready",
@@ -411,6 +428,7 @@ function VoiceFormCanvas({ form }: { form: Form }) {
   });
 
   useEffect(() => {
+    if (transcript.length <= 1) return;
     transcriptEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [transcript]);
 
@@ -418,7 +436,7 @@ function VoiceFormCanvas({ form }: { form: Form }) {
 
   const saveAnswer = (params: SaveAnswerParams) => {
     const fieldId = params.fieldId ?? params.field ?? params.questionId;
-    const value = (params.value ?? params.answer ?? "").trim();
+    const value = normalizeAnswerValue(params.value ?? params.answer);
     if (!fieldId || !value) return "No answer saved — incomplete payload.";
 
     const nextAnswers = {
@@ -432,18 +450,66 @@ function VoiceFormCanvas({ form }: { form: Form }) {
     return `Saved answer for ${fieldId}.`;
   };
 
+  const finishSuccessfulSubmission = () => {
+    const minSuccessDelayMs = 1200;
+    const maxWaitMs = 4000;
+    const startedAt = Date.now();
+
+    const tick = () => {
+      const elapsed = Date.now() - startedAt;
+      const waitedLongEnough = elapsed >= minSuccessDelayMs;
+      const timedOut = elapsed >= maxWaitMs;
+
+      if ((waitedLongEnough && !conversation.isSpeaking) || timedOut) {
+        conversation.endSession();
+        setCompleted(true);
+        return;
+      }
+
+      window.setTimeout(tick, 150);
+    };
+
+    window.setTimeout(tick, 150);
+  };
+
   const completeForm = () => {
+    if (isCompletedRef.current) {
+      return "The form is already complete.";
+    }
+
+    if (isSubmittingRef.current) {
+      return "Responses are already being saved.";
+    }
+
+    const missingRequired = form.fields.filter(
+      (field) => field.required && !answersRef.current[field.id]?.trim(),
+    );
+
+    if (missingRequired.length > 0) {
+      const nextField = missingRequired[0]!;
+      return `The form is not complete yet. Ask the user for the required field "${nextField.label}" (field id: ${nextField.id}).`;
+    }
+
     const duration = startTimeRef.current
       ? Math.round((Date.now() - startTimeRef.current) / 1000)
       : 0;
     const answersToSubmit = answersRef.current;
 
+    isSubmittingRef.current = true;
     setSubmitting(true);
     submitResponse(slugRef.current, answersToSubmit, duration)
       .then(() => {
         setAnswers(answersToSubmit);
-        setCompleted(true);
-        conversation.endSession();
+        isCompletedRef.current = true;
+        setTranscript((t) => [
+          ...t,
+          {
+            id: `submit-success-${Date.now()}`,
+            role: "system",
+            text: "Responses saved successfully.",
+          },
+        ]);
+        finishSuccessfulSubmission();
       })
       .catch((err) => {
         console.error("Failed to submit response:", err);
@@ -456,7 +522,10 @@ function VoiceFormCanvas({ form }: { form: Form }) {
           },
         ]);
       })
-      .finally(() => setSubmitting(false));
+      .finally(() => {
+        isSubmittingRef.current = false;
+        setSubmitting(false);
+      });
 
     return "Form completed. Saving responses...";
   };
@@ -478,9 +547,7 @@ function VoiceFormCanvas({ form }: { form: Form }) {
         overrides: {
           agent: {
             prompt: { prompt: buildAgentPrompt(form) },
-            firstMessage:
-              form.greeting ??
-              "Hi. I'll guide you through a few questions — just answer naturally.",
+            firstMessage: buildAgentFirstMessage(form),
             language: "en" as const,
           },
         },

@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router";
-import { fetchForm, fetchResponses, deleteForm } from "@/lib/api";
+import {
+  fetchForm,
+  fetchResponses,
+  deleteForm,
+  subscribeToResponsesStream,
+} from "@/lib/api";
 import type { Form, FormField, FormResponse } from "@/types/forms";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -137,6 +142,9 @@ export function FormDetail() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"responses" | "share">("responses");
   const [copied, setCopied] = useState(false);
+  const [liveStatus, setLiveStatus] = useState<"connecting" | "live" | "offline">(
+    "connecting",
+  );
 
   useEffect(() => {
     if (!slug) return;
@@ -148,6 +156,49 @@ export function FormDetail() {
       .catch(() => navigate("/dashboard"))
       .finally(() => setLoading(false));
   }, [slug, navigate]);
+
+  useEffect(() => {
+    if (!slug) return;
+
+    let cancelled = false;
+    let unsubscribe: (() => void) | null = null;
+
+    setLiveStatus("connecting");
+
+    subscribeToResponsesStream(slug, (event) => {
+      if (cancelled) return;
+
+      if (event.type === "connected") {
+        setLiveStatus("live");
+        return;
+      }
+
+      if (event.type === "response.created") {
+        setResponses((prev) => {
+          if (prev.some((response) => response.id === event.payload.response.id)) {
+            return prev;
+          }
+          return [event.payload.response, ...prev];
+        });
+      }
+    })
+      .then((cleanup) => {
+        if (cancelled) {
+          cleanup();
+          return;
+        }
+        unsubscribe = cleanup;
+      })
+      .catch((error) => {
+        console.error("Failed to open live responses stream:", error);
+        if (!cancelled) setLiveStatus("offline");
+      });
+
+    return () => {
+      cancelled = true;
+      unsubscribe?.();
+    };
+  }, [slug]);
 
   async function handleDelete() {
     if (!form || !confirm(`Delete "${form.title}"? This cannot be undone.`))
@@ -207,6 +258,24 @@ export function FormDetail() {
         )}
         <div className="mt-2 text-sm text-stone-400">
           {form.fields.length} questions &middot; {responses.length} response{responses.length !== 1 ? "s" : ""}
+        </div>
+        <div className="mt-3 flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-stone-400">
+          <span
+            className={`inline-block h-2 w-2 rounded-full ${
+              liveStatus === "live"
+                ? "bg-emerald-500"
+                : liveStatus === "connecting"
+                  ? "bg-amber-400"
+                  : "bg-stone-300"
+            }`}
+          />
+          <span>
+            {liveStatus === "live"
+              ? "Live updates on"
+              : liveStatus === "connecting"
+                ? "Connecting live updates"
+                : "Live updates offline"}
+          </span>
         </div>
 
         {/* Tabs */}
