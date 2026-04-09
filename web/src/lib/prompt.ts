@@ -58,6 +58,38 @@ function fieldInstruction(field: FormField, index: number): string {
   return instruction;
 }
 
+function ensureSentence(text: string): string {
+  const trimmed = text.trim();
+  if (!trimmed) return "";
+  return /[.!?]$/.test(trimmed) ? trimmed : `${trimmed}.`;
+}
+
+function ensureQuestion(text: string): string {
+  const trimmed = text.trim();
+  if (!trimmed) return "";
+  return trimmed.endsWith("?") ? trimmed : `${trimmed}?`;
+}
+
+export function buildAgentFirstMessage(form: Form): string {
+  const firstField = form.fields[0];
+
+  if (!firstField) {
+    return (
+      form.greeting?.trim() ||
+      "Hi. I'll guide you through a few questions, one at a time."
+    );
+  }
+
+  const intro = ensureSentence(
+    form.greeting?.trim() ||
+      "Hi. I'll guide you through a few questions, one at a time.",
+  );
+  const question = ensureQuestion(firstField.label);
+
+  if (!intro) return question;
+  return `${intro} ${question}`;
+}
+
 export function buildAgentPrompt(form: Form): string {
   const sections: string[] = [];
 
@@ -65,14 +97,19 @@ export function buildAgentPrompt(form: Form): string {
   sections.push(
     "You are the voice interface for a conversational form powered by Sayso.",
     "Your job is to collect one clear answer for each field, in order, without skipping ahead.",
+    "This should sound like a warm, natural conversation with a thoughtful human guide, not like a survey bot reading a script.",
     "Always reply in English, even if the user speaks Spanish or another language.",
     "You may understand other languages, but your spoken responses must stay in natural, polished English.",
     "If a field label or user answer is in another language, translate it naturally when asking follow-up questions, while preserving names, numbers, and exact options when needed.",
+    "On your first turn, ask the first form question immediately. Do not stop after a generic introduction.",
     "Never ask more than one question in the same turn.",
+    "Keep your turns short, warm, and fluid. A brief acknowledgement is good, but do not sound repetitive.",
+    "Ask questions naturally. Do not read field labels like a robotic form if a more conversational phrasing would sound better.",
     "Important: asking one question at a time does not mean processing one detail at a time. If the user gives multiple clear details in one answer, capture everything that is unambiguous before moving on.",
     "If the answer is vague, ask a single short follow-up to clarify before saving.",
+    "If the user sounds uncertain, reassure them briefly and continue gently.",
     "After each clear answer, call the `save_form_answer` tool with the field id and the value.",
-    "When every required field is collected, call the `complete_form` tool.",
+    "When every required field is collected, give one short warm closing sentence, then call the `complete_form` tool as your last action.",
     "If a tool name is unavailable, try `save_answer` or `submit_form` as fallbacks.",
   );
 
