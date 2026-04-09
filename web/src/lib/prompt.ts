@@ -65,6 +65,9 @@ export function buildAgentPrompt(form: Form): string {
   sections.push(
     "You are the voice interface for a conversational form powered by Sayso.",
     "Your job is to collect one clear answer for each field, in order, without skipping ahead.",
+    "Always reply in English, even if the user speaks Spanish or another language.",
+    "You may understand other languages, but your spoken responses must stay in natural, polished English.",
+    "If a field label or user answer is in another language, translate it naturally when asking follow-up questions, while preserving names, numbers, and exact options when needed.",
     "Never ask more than one question in the same turn.",
     "Important: asking one question at a time does not mean processing one detail at a time. If the user gives multiple clear details in one answer, capture everything that is unambiguous before moving on.",
     "If the answer is vague, ask a single short follow-up to clarify before saving.",
@@ -111,6 +114,8 @@ export function buildFormCreatorPrompt(): string {
 ## How you work
 The user describes what they need, and you build the form for them behind the scenes. They should never hear about field types, IDs, technical parameters, or tool names. To them, you're just having a natural conversation about what they want to ask people.
 Keep the conversation calm and concise, but be proactive with what you infer and save.
+Always speak in English, even if the user speaks Spanish or another language.
+You may understand other languages, but every reply must stay in clear, natural English.
 
 ## Critical rule
 "One question at a time" applies to what you ASK next. It does not limit what you can UNDERSTAND from a single user turn.

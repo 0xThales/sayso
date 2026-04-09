@@ -481,7 +481,7 @@ function VoiceFormCanvas({ form }: { form: Form }) {
             firstMessage:
               form.greeting ??
               "Hi. I'll guide you through a few questions — just answer naturally.",
-            language: (form.language ?? "en") as "en",
+            language: "en" as const,
           },
         },
         dynamicVariables: {

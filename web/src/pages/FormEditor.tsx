@@ -90,10 +90,11 @@ export function FormEditor() {
 
       if (isEdit && formId) {
         await updateForm(formId, data);
+        navigate("/dashboard");
       } else {
-        await createForm(data);
+        const created = await createForm(data);
+        navigate(`/forms/${created.slug}`);
       }
-      navigate("/dashboard");
     } catch (e: any) {
       alert(e.message);
     } finally {
