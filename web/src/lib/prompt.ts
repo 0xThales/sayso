@@ -1,5 +1,40 @@
 import type { Form, FormField } from "@/types/forms";
 
+function normalizeText(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function looksLikeEnglish(text: string | null | undefined): boolean {
+  if (!text) return false;
+  const normalized = normalizeText(text);
+
+  if (/[¿¡]/.test(text)) return false;
+  if (/[áéíóúñ]/i.test(text)) return false;
+
+  const spanishSignals = [
+    " como ",
+    " cual ",
+    " cuales ",
+    " cuantos ",
+    " cuantas ",
+    " que ",
+    " tienes ",
+    " esperas ",
+    " entrenador ",
+    " entrenamiento ",
+    " lesion ",
+    " objetivo ",
+    " llamas",
+    " deberia ",
+    " deba ",
+  ];
+
+  return !spanishSignals.some((signal) => normalized.includes(signal));
+}
+
 function fieldInstruction(field: FormField, index: number): string {
   const num = index + 1;
   const required = field.required ? " (required)" : " (optional — skip if patient declines)";
@@ -64,6 +99,59 @@ function ensureSentence(text: string): string {
   return /[.!?]$/.test(trimmed) ? trimmed : `${trimmed}.`;
 }
 
+function englishQuestionFallback(field: FormField): string {
+  const fingerprint = normalizeText(`${field.id} ${field.label}`);
+
+  if (fingerprint.includes("name")) return "What is your name?";
+  if (fingerprint.includes("full_name")) return "What is your full name?";
+  if (fingerprint.includes("email")) return "What email address should we use?";
+  if (fingerprint.includes("age")) return "How old are you?";
+  if (fingerprint.includes("goal")) return "What is your main goal?";
+  if (fingerprint.includes("reason")) return "What is the main reason for this today?";
+  if (fingerprint.includes("experience"))
+    return "What is your current experience level?";
+  if (fingerprint.includes("injur") || fingerprint.includes("lesion"))
+    return "Do you have any injuries, pain, or physical limitations I should know about?";
+  if (fingerprint.includes("days_per_week"))
+    return "How many days per week can you train?";
+  if (fingerprint.includes("expectation"))
+    return "What are you hoping to get out of this?";
+  if (fingerprint.includes("medication"))
+    return "Are you currently taking any medications?";
+  if (fingerprint.includes("allerg"))
+    return "Do you have any known allergies?";
+  if (fingerprint.includes("blood_type"))
+    return "Do you know your blood type?";
+  if (fingerprint.includes("smok"))
+    return "Do you smoke or use tobacco products?";
+  if (fingerprint.includes("pain"))
+    return "How would you rate your pain right now?";
+
+  switch (field.type) {
+    case "boolean":
+      return "Would you answer yes or no to this question?";
+    case "number":
+      return "What number would you give for this?";
+    case "email":
+      return "What is your email address?";
+    case "date":
+      return "What date should I note down?";
+    case "scale":
+      return "How would you rate this on the requested scale?";
+    case "enum":
+      return "Which option fits best for you?";
+    case "multi_select":
+      return "Which options apply to you?";
+    case "long_text":
+      return "Could you tell me about this in your own words?";
+    case "file":
+      return "Do you have a file you may want to share later?";
+    case "text":
+    default:
+      return "Could you tell me your answer to this first question?";
+  }
+}
+
 function ensureQuestion(text: string): string {
   const trimmed = text.trim();
   if (!trimmed) return "";
@@ -72,19 +160,18 @@ function ensureQuestion(text: string): string {
 
 export function buildAgentFirstMessage(form: Form): string {
   const firstField = form.fields[0];
+  const englishIntro = "Hi. I'll guide you through this in English, one question at a time.";
 
   if (!firstField) {
-    return (
-      form.greeting?.trim() ||
-      "Hi. I'll guide you through a few questions, one at a time."
-    );
+    return englishIntro;
   }
 
   const intro = ensureSentence(
-    form.greeting?.trim() ||
-      "Hi. I'll guide you through a few questions, one at a time.",
+    looksLikeEnglish(form.greeting) ? form.greeting!.trim() : englishIntro,
   );
-  const question = ensureQuestion(firstField.label);
+  const question = looksLikeEnglish(firstField.label)
+    ? ensureQuestion(firstField.label)
+    : englishQuestionFallback(firstField);
 
   if (!intro) return question;
   return `${intro} ${question}`;
@@ -100,7 +187,8 @@ export function buildAgentPrompt(form: Form): string {
     "This should sound like a warm, natural conversation with a thoughtful human guide, not like a survey bot reading a script.",
     "Always reply in English, even if the user speaks Spanish or another language.",
     "You may understand other languages, but your spoken responses must stay in natural, polished English.",
-    "If a field label or user answer is in another language, translate it naturally when asking follow-up questions, while preserving names, numbers, and exact options when needed.",
+    "Never speak Spanish back to the user.",
+    "If a field label, greeting, option list, or user answer is in another language, translate it naturally into English when speaking, while preserving names, numbers, and exact options when needed.",
     "On your first turn, ask the first form question immediately. Do not stop after a generic introduction.",
     "Never ask more than one question in the same turn.",
     "Keep your turns short, warm, and fluid. A brief acknowledgement is good, but do not sound repetitive.",
