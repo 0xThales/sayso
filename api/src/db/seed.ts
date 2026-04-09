@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { isNull } from "drizzle-orm";
 import { createDb, schema } from "./index.js";
 import type { FormFieldDef } from "./schema.js";
 
@@ -149,67 +150,99 @@ const trainerIntakeFields: FormFieldDef[] = [
 ];
 
 async function seed() {
+  const userId = process.env.USER_ID || null;
+  if (!userId) {
+    console.warn("⚠ No USER_ID env var — forms will be created without an owner (won't appear in Dashboard).");
+    console.warn("  Usage: USER_ID=user_xxx pnpm --filter api db:seed");
+  }
   const db = createDb();
 
   // ── Clinical intake ─────────────────────────────────────────────────────────
   console.log("Seeding clinical intake form...");
 
+  const clinicalValues = {
+    userId,
+    slug: "clinical-intake",
+    title: "Clinical Intake Form",
+    description:
+      "A voice-guided clinical intake that collects patient information conversationally.",
+    fields: clinicalFields,
+    greeting:
+      "Hello, welcome to your intake appointment. I'll walk you through a few questions about your health — just answer naturally and take your time.",
+    systemContext: [
+      "You are a warm, professional clinical intake assistant.",
+      "You are collecting medical information from a patient before their appointment.",
+      "Be empathetic and patient. Some questions may be sensitive.",
+      "If the patient asks what a term means, explain it in simple language.",
+      "You are NOT a doctor and cannot diagnose. If asked for medical advice, kindly remind them that a healthcare professional will review their information.",
+      "For the medications question: if they say yes, proceed to ask about details. If no, skip the medication_details field.",
+      "For multi-select questions, read the options naturally (not as a numbered list) and let the patient pick.",
+    ].join("\n"),
+    personality: "Warm, professional, empathetic, patient, clear",
+    language: "en",
+  };
+
   const [form] = await db
     .insert(schema.forms)
-    .values({
-      slug: "clinical-intake",
-      title: "Clinical Intake Form",
-      description:
-        "A voice-guided clinical intake that collects patient information conversationally.",
-      fields: clinicalFields,
-      greeting:
-        "Hello, welcome to your intake appointment. I'll walk you through a few questions about your health — just answer naturally and take your time.",
-      systemContext: [
-        "You are a warm, professional clinical intake assistant.",
-        "You are collecting medical information from a patient before their appointment.",
-        "Be empathetic and patient. Some questions may be sensitive.",
-        "If the patient asks what a term means, explain it in simple language.",
-        "You are NOT a doctor and cannot diagnose. If asked for medical advice, kindly remind them that a healthcare professional will review their information.",
-        "For the medications question: if they say yes, proceed to ask about details. If no, skip the medication_details field.",
-        "For multi-select questions, read the options naturally (not as a numbered list) and let the patient pick.",
-      ].join("\n"),
-      personality: "Warm, professional, empathetic, patient, clear",
-      language: "en",
+    .values(clinicalValues)
+    .onConflictDoUpdate({
+      target: schema.forms.slug,
+      set: { ...clinicalValues, slug: undefined },
     })
     .returning();
 
-  console.log(`Created form: ${form.title} (slug: ${form.slug})`);
+  console.log(`Upserted form: ${form.title} (slug: ${form.slug})`);
   console.log(`Public URL: /f/${form.slug}`);
 
   // ── Personal Trainer intake ─────────────────────────────────────────────────
   console.log("Seeding personal trainer intake form...");
 
+  const trainerValues = {
+    userId,
+    slug: "trainer-intake",
+    title: "Intake — Entrenador Personal",
+    description:
+      "Formulario de primer acercamiento entre un entrenador personal y un nuevo cliente. Recoge objetivos, experiencia, limitaciones y expectativas por voz.",
+    fields: trainerIntakeFields,
+    greeting:
+      "¡Hola! Soy el asistente de tu entrenador. Antes de empezar, quiero conocerte un poco para que podamos armar algo que realmente te funcione. Son solo unas preguntas rápidas — contesta como quieras, sin presión.",
+    systemContext: [
+      "Eres el asistente de intake de un entrenador personal.",
+      "Tu trabajo es recoger información clave de un nuevo cliente para que el entrenador pueda diseñar su primer programa.",
+      "Habla en español, de forma cercana y motivadora — como un coach amigable, no como un formulario.",
+      "Si el cliente parece nervioso o inseguro sobre su nivel, normaliza: 'No te preocupes, todos empezamos por algún lado.'",
+      "NO des consejos de entrenamiento ni nutrición — solo recoges info.",
+      "Si mencionan una lesión o condición médica seria, valida: 'Gracias por contarme, el entrenador va a tener esto en cuenta.'",
+      "Mantén las transiciones naturales entre preguntas. No digas 'siguiente pregunta'.",
+    ].join("\n"),
+    personality: "Cercano, motivador, conciso, empático, deportivo",
+    language: "es",
+  };
+
   const [trainerForm] = await db
     .insert(schema.forms)
-    .values({
-      slug: "trainer-intake",
-      title: "Intake — Entrenador Personal",
-      description:
-        "Formulario de primer acercamiento entre un entrenador personal y un nuevo cliente. Recoge objetivos, experiencia, limitaciones y expectativas por voz.",
-      fields: trainerIntakeFields,
-      greeting:
-        "¡Hola! Soy el asistente de tu entrenador. Antes de empezar, quiero conocerte un poco para que podamos armar algo que realmente te funcione. Son solo unas preguntas rápidas — contesta como quieras, sin presión.",
-      systemContext: [
-        "Eres el asistente de intake de un entrenador personal.",
-        "Tu trabajo es recoger información clave de un nuevo cliente para que el entrenador pueda diseñar su primer programa.",
-        "Habla en español, de forma cercana y motivadora — como un coach amigable, no como un formulario.",
-        "Si el cliente parece nervioso o inseguro sobre su nivel, normaliza: 'No te preocupes, todos empezamos por algún lado.'",
-        "NO des consejos de entrenamiento ni nutrición — solo recoges info.",
-        "Si mencionan una lesión o condición médica seria, valida: 'Gracias por contarme, el entrenador va a tener esto en cuenta.'",
-        "Mantén las transiciones naturales entre preguntas. No digas 'siguiente pregunta'.",
-      ].join("\n"),
-      personality: "Cercano, motivador, conciso, empático, deportivo",
-      language: "es",
+    .values(trainerValues)
+    .onConflictDoUpdate({
+      target: schema.forms.slug,
+      set: { ...trainerValues, slug: undefined },
     })
     .returning();
 
-  console.log(`Created form: ${trainerForm.title} (slug: ${trainerForm.slug})`);
+  console.log(`Upserted form: ${trainerForm.title} (slug: ${trainerForm.slug})`);
   console.log(`Public URL: /f/${trainerForm.slug}`);
+
+  // ── Claim orphan forms ──────────────────────────────────────────────────────
+  if (userId) {
+    const claimed = await db
+      .update(schema.forms)
+      .set({ userId })
+      .where(isNull(schema.forms.userId))
+      .returning({ id: schema.forms.id, slug: schema.forms.slug });
+
+    if (claimed.length > 0) {
+      console.log(`Claimed ${claimed.length} orphan form(s): ${claimed.map((f) => f.slug).join(", ")}`);
+    }
+  }
 
   console.log("Done.");
 }
