@@ -1,5 +1,22 @@
 import type { Form, FormField, FormResponse } from "@/types/forms";
 
+// ── Auth helper ────────────────────────────────────────────────────────────
+
+let _getToken: (() => Promise<string | null>) | null = null;
+
+export function setTokenGetter(fn: () => Promise<string | null>) {
+  _getToken = fn;
+}
+
+async function authHeaders(): Promise<HeadersInit> {
+  const headers: HeadersInit = { "Content-Type": "application/json" };
+  if (_getToken) {
+    const token = await _getToken();
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+  }
+  return headers;
+}
+
 // ── Form CRUD ───────────────────────────────────────────────────────────────
 
 export interface FormSummary {
@@ -13,7 +30,7 @@ export interface FormSummary {
 }
 
 export async function fetchForms(): Promise<FormSummary[]> {
-  const res = await fetch("/api/forms");
+  const res = await fetch("/api/forms", { headers: await authHeaders() });
   if (!res.ok) throw new Error(`Failed to load forms: ${res.statusText}`);
   return res.json();
 }
@@ -37,7 +54,7 @@ export async function createForm(data: {
 }): Promise<Form> {
   const res = await fetch("/api/forms", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: await authHeaders(),
     body: JSON.stringify(data),
   });
   if (!res.ok) throw new Error(`Failed to create form: ${res.statusText}`);
@@ -59,7 +76,7 @@ export async function updateForm(
 ): Promise<Form> {
   const res = await fetch(`/api/forms/${id}`, {
     method: "PUT",
-    headers: { "Content-Type": "application/json" },
+    headers: await authHeaders(),
     body: JSON.stringify(data),
   });
   if (!res.ok) throw new Error(`Failed to update form: ${res.statusText}`);
@@ -67,14 +84,19 @@ export async function updateForm(
 }
 
 export async function deleteForm(id: string): Promise<void> {
-  const res = await fetch(`/api/forms/${id}`, { method: "DELETE" });
+  const res = await fetch(`/api/forms/${id}`, {
+    method: "DELETE",
+    headers: await authHeaders(),
+  });
   if (!res.ok) throw new Error(`Failed to delete form: ${res.statusText}`);
 }
 
 // ── Responses ───────────────────────────────────────────────────────────────
 
 export async function fetchResponses(slug: string): Promise<FormResponse[]> {
-  const res = await fetch(`/api/forms/${slug}/responses`);
+  const res = await fetch(`/api/forms/${slug}/responses`, {
+    headers: await authHeaders(),
+  });
   if (!res.ok) throw new Error(`Failed to load responses: ${res.statusText}`);
   return res.json();
 }

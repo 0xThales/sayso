@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
+import { UserButton } from "@clerk/clerk-react";
 import { fetchForms, deleteForm, type FormSummary } from "@/lib/api";
 
 export function Dashboard() {
@@ -32,7 +33,7 @@ export function Dashboard() {
           <Link to="/" className="font-display text-xl font-semibold tracking-tight">
             sayso
           </Link>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <Link
               to="/dashboard/new/voice"
               className="inline-flex items-center gap-2 rounded-full border border-stone-200 px-5 py-2.5 text-sm font-medium text-stone-700 transition hover:border-stone-400 hover:text-stone-900"
@@ -45,6 +46,7 @@ export function Dashboard() {
             >
               New form <span>+</span>
             </Link>
+            <UserButton />
           </div>
         </div>
       </header>

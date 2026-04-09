@@ -8,6 +8,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@clerk/clerk-react": "^5.61.3",
     "@elevenlabs/react": "^1.0.3",
     "framer-motion": "^12.38.0",
     "react": "^19.1.0",

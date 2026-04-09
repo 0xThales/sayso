@@ -1,11 +1,12 @@
 import { Hono } from "hono";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import type { Db } from "../db/index.js";
 import { schema } from "../db/index.js";
 import type { FormFieldDef } from "../db/schema.js";
+import { clerkAuth } from "../middleware/auth.js";
 
-type Env = { Variables: { db: Db } };
+type Env = { Variables: { db: Db; userId: string } };
 
 const forms = new Hono<Env>();
 
@@ -34,10 +35,27 @@ async function ensureUniqueSlug(db: Db, base: string): Promise<string> {
   }
 }
 
-// ── POST /forms — Create ────────────────────────────────────────────────────
+// ── GET /forms/:slug — Public ──────────────────────────────────────────────
 
-forms.post("/", async (c) => {
+forms.get("/:slug", async (c) => {
   const db = c.get("db");
+  const slug = c.req.param("slug");
+
+  const [form] = await db
+    .select()
+    .from(schema.forms)
+    .where(eq(schema.forms.slug, slug))
+    .limit(1);
+
+  if (!form) return c.json({ error: "Form not found" }, 404);
+  return c.json(form);
+});
+
+// ── POST /forms — Create (authenticated) ────────────────────────────────────
+
+forms.post("/", clerkAuth, async (c) => {
+  const db = c.get("db");
+  const userId = c.get("userId");
   const body = await c.req.json<{
     title: string;
     description?: string;
@@ -60,6 +78,7 @@ forms.post("/", async (c) => {
   const [form] = await db
     .insert(schema.forms)
     .values({
+      userId,
       slug,
       title: body.title,
       description: body.description ?? "",
@@ -75,10 +94,12 @@ forms.post("/", async (c) => {
   return c.json(form, 201);
 });
 
-// ── GET /forms — List all ───────────────────────────────────────────────────
+// ── GET /forms — List user's forms (authenticated) ─────────────────────────
 
-forms.get("/", async (c) => {
+forms.get("/", clerkAuth, async (c) => {
   const db = c.get("db");
+  const userId = c.get("userId");
+
   const allForms = await db
     .select({
       id: schema.forms.id,
@@ -90,6 +111,7 @@ forms.get("/", async (c) => {
       createdAt: schema.forms.createdAt,
     })
     .from(schema.forms)
+    .where(eq(schema.forms.userId, userId))
     .orderBy(schema.forms.createdAt);
 
   const result = allForms.map((f) => ({
@@ -100,26 +122,11 @@ forms.get("/", async (c) => {
   return c.json(result);
 });
 
-// ── GET /forms/:slug — Get by slug ──────────────────────────────────────────
+// ── PUT /forms/:id — Update (owner only) ───────────────────────────────────
 
-forms.get("/:slug", async (c) => {
+forms.put("/:id", clerkAuth, async (c) => {
   const db = c.get("db");
-  const slug = c.req.param("slug");
-
-  const [form] = await db
-    .select()
-    .from(schema.forms)
-    .where(eq(schema.forms.slug, slug))
-    .limit(1);
-
-  if (!form) return c.json({ error: "Form not found" }, 404);
-  return c.json(form);
-});
-
-// ── PUT /forms/:id — Update ─────────────────────────────────────────────────
-
-forms.put("/:id", async (c) => {
-  const db = c.get("db");
+  const userId = c.get("userId");
   const id = c.req.param("id");
   const body = await c.req.json<{
     title?: string;
@@ -135,22 +142,23 @@ forms.put("/:id", async (c) => {
   const [updated] = await db
     .update(schema.forms)
     .set(body)
-    .where(eq(schema.forms.id, id))
+    .where(and(eq(schema.forms.id, id), eq(schema.forms.userId, userId)))
     .returning();
 
   if (!updated) return c.json({ error: "Form not found" }, 404);
   return c.json(updated);
 });
 
-// ── DELETE /forms/:id — Delete ──────────────────────────────────────────────
+// ── DELETE /forms/:id — Delete (owner only) ────────────────────────────────
 
-forms.delete("/:id", async (c) => {
+forms.delete("/:id", clerkAuth, async (c) => {
   const db = c.get("db");
+  const userId = c.get("userId");
   const id = c.req.param("id");
 
   const [deleted] = await db
     .delete(schema.forms)
-    .where(eq(schema.forms.id, id))
+    .where(and(eq(schema.forms.id, id), eq(schema.forms.userId, userId)))
     .returning({ id: schema.forms.id });
 
   if (!deleted) return c.json({ error: "Form not found" }, 404);

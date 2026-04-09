@@ -14,6 +14,7 @@ export const forms = pgTable("forms", {
   id: text("id")
     .primaryKey()
     .$defaultFn(() => nanoid(12)),
+  userId: text("user_id"),
   slug: text("slug").notNull().unique(),
   title: text("title").notNull(),
   description: text("description").notNull().default(""),
