@@ -12,16 +12,22 @@ Monorepo with two pnpm workspaces: `web/` (React frontend) and `api/` (Hono back
 
 **API (`api/`)** — Hono server on Node (`@hono/node-server`), TypeScript, runs on port 3001.
 - `src/routes/elevenlabs.ts` — Proxies signed URL requests to ElevenLabs API (keeps API key server-side).
-- `src/routes/forms.ts` — CRUD for forms (looked up by slug).
-- `src/routes/responses.ts` — Submit/list responses nested under `/forms/:slug/responses`.
-- `src/db/` — Drizzle ORM with Neon Postgres. Schema in `schema.ts`. DB is optional: if `DATABASE_URL` is unset, only ElevenLabs routes work (forms/responses return 503).
+- `src/routes/forms.ts` — CRUD for forms (looked up by slug). Auth required for create/list/update/delete; GET by slug is public.
+- `src/routes/responses.ts` — Submit/list responses nested under `/forms/:slug/responses`. Submit is public; listing requires auth (owner only).
+- `src/middleware/auth.ts` — Clerk JWT verification middleware. Extracts `userId` from Bearer token.
+- `src/db/` — Drizzle ORM with Neon Postgres. Schema in `schema.ts`. Forms have a `userId` column for ownership. DB is optional: if `DATABASE_URL` is unset, only ElevenLabs routes work (forms/responses return 503).
 - All routes are mounted under `/api` (e.g. `/api/elevenlabs/token`, `/api/forms`).
 
-**Web (`web/`)** — React 19 + Vite + Tailwind v4 + React Router v7.
-- `src/pages/FormView.tsx` — Main voice form page. Uses `@elevenlabs/react` (`ConversationProvider`, `useConversation`, `useConversationClientTool`). The agent calls client tools (`save_form_answer`, `complete_form`) to save answers into React state.
-- `src/pages/Landing.tsx` — Marketing landing page with framer-motion animations.
-- `src/data/forms.ts` — Hardcoded form definitions + `buildAgentPrompt()` which constructs the system prompt sent to the ElevenLabs agent.
+**Web (`web/`)** — React 19 + Vite + Tailwind v4 + React Router v7 + Clerk auth.
+- `src/pages/FormView.tsx` — Main voice form page (public). Uses `@elevenlabs/react`.
+- `src/pages/Landing.tsx` — Marketing landing page with framer-motion animations (public).
+- `src/pages/Dashboard.tsx` — User's forms list (protected, requires auth).
+- `src/pages/FormEditor.tsx` — Create/edit forms (protected).
+- `src/pages/FormDetail.tsx` — Form detail with responses (protected).
+- `src/lib/api.ts` — API client with auth token injection via `setTokenGetter()`.
+- `src/data/forms.ts` — Hardcoded form definitions + `buildAgentPrompt()`.
 - `src/lib/elevenlabs.ts` — Fetches signed URL from the API.
+- Auth: `ClerkProvider` wraps the app in `main.tsx`. Dashboard routes use `ProtectedRoute` (redirects to sign-in). `App.tsx` wires `useAuth().getToken` into the API client.
 - Vite proxies `/api` to `localhost:3001` in dev.
 - Path alias: `@/` maps to `./src/`.
 
