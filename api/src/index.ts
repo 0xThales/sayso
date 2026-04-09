@@ -16,7 +16,18 @@ const DEFAULT_PORT = 3001;
 const db = process.env.DATABASE_URL ? createDb() : null;
 
 // Middleware
-api.use("*", cors());
+api.use(
+  "*",
+  cors({
+    origin: (origin) => {
+      // Allow local dev and Vercel deployments
+      if (!origin) return "*";
+      if (origin.includes("localhost")) return origin;
+      if (origin.endsWith(".vercel.app")) return origin;
+      return null as unknown as string;
+    },
+  }),
+);
 
 const requireDb: MiddlewareHandler<Env> = async (c, next) => {
   if (!db) {
@@ -52,6 +63,6 @@ if (!db) {
   );
 }
 
-serve({ fetch: app.fetch, port }, (info) => {
-  console.log(`API running on http://localhost:${info.port}`);
+serve({ fetch: app.fetch, port, hostname: "0.0.0.0" }, (info) => {
+  console.log(`API running on http://0.0.0.0:${info.port}`);
 });
