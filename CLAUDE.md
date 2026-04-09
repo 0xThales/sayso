@@ -33,6 +33,8 @@ Monorepo with two pnpm workspaces: `web/` (React frontend) and `api/` (Hono back
 
 **ElevenLabs agent config** — `agent_configs/Sayso-Intake.json` contains the full ElevenLabs agent configuration (voice, TTS, ASR, tools). The agent ID is `agent_6501knsjznw3exbacwqn0xpp4qxc`.
 
+**Auth**: Clerk handles authentication. Frontend uses `@clerk/clerk-react`, API uses `@clerk/backend` for JWT verification. Forms are scoped to the authenticated user via `userId` column. Public routes (form view, response submission) don't require auth.
+
 **Dual form systems**: Forms exist both as hardcoded data in `web/src/data/forms.ts` (used by the current UI) and as a DB-backed CRUD API. The frontend currently uses hardcoded forms; the DB API is ready but not yet wired to the UI.
 
 ## Commands
@@ -65,7 +67,11 @@ Copy `api/.env.example` to `api/.env`. Required vars:
 - `ELEVENLABS_API_KEY` — needed for voice sessions
 - `ELEVENLABS_AGENT_ID` — default agent (already set in example)
 - `DATABASE_URL` — Neon Postgres connection string (optional, only for forms/responses CRUD)
+- `CLERK_SECRET_KEY` — Clerk secret key for JWT verification (required for auth)
 - `PORT` — API port (default 3001)
+
+Copy `web/.env.example` to `web/.env`:
+- `VITE_CLERK_PUBLISHABLE_KEY` — Clerk publishable key for frontend auth
 
 ## Design System
 

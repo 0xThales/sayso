@@ -96,9 +96,62 @@ const clinicalFields: FormFieldDef[] = [
   },
 ];
 
+// ── Personal Trainer Intake ──────────────────────────────────────────────────
+
+const trainerIntakeFields: FormFieldDef[] = [
+  {
+    id: "name",
+    label: "¿Cómo te llamas?",
+    type: "text",
+    required: true,
+  },
+  {
+    id: "goal",
+    label: "¿Qué quieres lograr con el entrenamiento?",
+    type: "long_text",
+    required: true,
+    description:
+      "Deja que se explayen — esta es LA pregunta. Si la respuesta es genérica ('ponerme en forma'), pregunta un follow-up breve: '¿Hay algo específico que te motivó a buscar un entrenador ahora?'",
+  },
+  {
+    id: "experience",
+    label: "¿Has entrenado antes? ¿Qué estás haciendo actualmente?",
+    type: "long_text",
+    required: true,
+    description:
+      "Combina historial y actividad actual en una sola pregunta. Si nunca han entrenado, no insistas — pasa a la siguiente.",
+  },
+  {
+    id: "injuries",
+    label: "¿Tienes alguna lesión, dolor crónico o limitación física que deba saber?",
+    type: "long_text",
+    required: true,
+    description:
+      "Pregunta con naturalidad, sin tono clínico. Si dicen que no, perfecto — no pidas más detalle.",
+  },
+  {
+    id: "days_per_week",
+    label: "¿Cuántos días por semana puedes entrenar?",
+    type: "number",
+    required: true,
+    validation: { min: 1, max: 7 },
+    description:
+      "Si mencionan un rango ('3 o 4'), guarda el número menor. Pregunta brevemente cuánto tiempo por sesión si lo mencionan.",
+  },
+  {
+    id: "expectations",
+    label: "¿Qué esperas de trabajar con un entrenador?",
+    type: "long_text",
+    required: true,
+    description:
+      "Buena pregunta de cierre. Algunos quieren solo rutinas, otros quieren accountability, nutrición, etc. Deja que hablen.",
+  },
+];
+
 async function seed() {
   const db = createDb();
 
+  // ── Clinical intake ─────────────────────────────────────────────────────────
   console.log("Seeding clinical intake form...");
 
   const [form] = await db
@@ -127,6 +180,37 @@ async function seed() {
 
   console.log(`Created form: ${form.title} (slug: ${form.slug})`);
   console.log(`Public URL: /f/${form.slug}`);
+
+  // ── Personal Trainer intake ─────────────────────────────────────────────────
+  console.log("Seeding personal trainer intake form...");
+
+  const [trainerForm] = await db
+    .insert(schema.forms)
+    .values({
+      slug: "trainer-intake",
+      title: "Intake — Entrenador Personal",
+      description:
+        "Formulario de primer acercamiento entre un entrenador personal y un nuevo cliente. Recoge objetivos, experiencia, limitaciones y expectativas por voz.",
+      fields: trainerIntakeFields,
+      greeting:
+        "¡Hola! Soy el asistente de tu entrenador. Antes de empezar, quiero conocerte un poco para que podamos armar algo que realmente te funcione. Son solo unas preguntas rápidas — contesta como quieras, sin presión.",
+      systemContext: [
+        "Eres el asistente de intake de un entrenador personal.",
+        "Tu trabajo es recoger información clave de un nuevo cliente para que el entrenador pueda diseñar su primer programa.",
+        "Habla en español, de forma cercana y motivadora — como un coach amigable, no como un formulario.",
+        "Si el cliente parece nervioso o inseguro sobre su nivel, normaliza: 'No te preocupes, todos empezamos por algún lado.'",
+        "NO des consejos de entrenamiento ni nutrición — solo recoges info.",
+        "Si mencionan una lesión o condición médica seria, valida: 'Gracias por contarme, el entrenador va a tener esto en cuenta.'",
+        "Mantén las transiciones naturales entre preguntas. No digas 'siguiente pregunta'.",
+      ].join("\n"),
+      personality: "Cercano, motivador, conciso, empático, deportivo",
+      language: "es",
+    })
+    .returning();
+
+  console.log(`Created form: ${trainerForm.title} (slug: ${trainerForm.slug})`);
+  console.log(`Public URL: /f/${trainerForm.slug}`);
+
   console.log("Done.");
 }
 

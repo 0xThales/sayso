@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router";
 import {
   ConversationProvider,
@@ -28,10 +28,6 @@ type FormDraft = {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-function formatStatus(status: string) {
-  return status.replace(/^\w/, (v) => v.toUpperCase());
-}
-
 function emptyDraft(): FormDraft {
   return { title: "", description: "", fields: [], greeting: "", personality: "" };
 }
@@ -41,66 +37,94 @@ const VALID_TYPES = new Set<string>([
   "multi_select", "email", "date", "scale", "file",
 ]);
 
-// ── Success screen ──────────────────────────────────────────────────────────
+// ── Voice Orb ───────────────────────────────────────────────────────────────
 
-function FormCreated({ slug, title }: { slug: string; title: string }) {
+function VoiceOrb({
+  status,
+  isSpeaking,
+  isListening,
+  onClick,
+  disabled,
+}: {
+  status: string;
+  isSpeaking: boolean;
+  isListening: boolean;
+  onClick: () => void;
+  disabled: boolean;
+}) {
+  const idle = status === "disconnected";
+  const connecting = status === "connecting";
+  const active = status === "connected";
+
+  // Determine ring animation
+  let ringClass = "scale-100 opacity-0";
+  if (connecting) ringClass = "scale-110 opacity-30 animate-pulse";
+  else if (isSpeaking) ringClass = "scale-[1.35] opacity-40";
+  else if (isListening) ringClass = "scale-[1.2] opacity-20";
+
+  // Determine orb color
+  let orbBg = "bg-stone-900";
+  if (connecting) orbBg = "bg-stone-700";
+  else if (isSpeaking) orbBg = "bg-coral";
+  else if (isListening) orbBg = "bg-stone-900";
+
   return (
-    <main className="relative min-h-screen overflow-hidden bg-cream text-stone-900">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,107,90,0.2),transparent_40%)]" />
-
-      <section className="relative mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center px-6 py-16 text-center">
-        <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-coral/10">
-          <svg
-            className="h-8 w-8 text-coral"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M5 13l4 4L19 7"
-            />
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="relative flex items-center justify-center disabled:cursor-not-allowed"
+    >
+      {/* Outer pulse ring */}
+      <div
+        className={`absolute h-32 w-32 rounded-full bg-coral/50 transition-all duration-700 ease-out ${ringClass}`}
+      />
+      {/* Inner ring */}
+      {active && (
+        <div
+          className={`absolute h-28 w-28 rounded-full border border-coral/20 transition-all duration-500 ${
+            isSpeaking ? "scale-[1.15] opacity-100" : "scale-100 opacity-40"
+          }`}
+        />
+      )}
+      {/* Orb */}
+      <div
+        className={`relative z-10 flex h-24 w-24 items-center justify-center rounded-full ${orbBg} shadow-xl transition-all duration-500 ${
+          active ? "shadow-coral/20" : "shadow-stone-900/10"
+        } ${idle ? "hover:scale-105 hover:shadow-2xl" : ""}`}
+      >
+        {idle && (
+          <svg className="h-8 w-8 text-white ml-1" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M8 5v14l11-7z" />
           </svg>
-        </div>
-
-        <p className="text-sm uppercase tracking-[0.3em] text-coral-dark">
-          Created
-        </p>
-        <h1 className="mt-3 font-display text-5xl font-semibold tracking-tight md:text-6xl">
-          {title}
-        </h1>
-        <p className="mt-4 max-w-md text-lg text-stone-600">
-          Your form is live. Share the link or fine-tune it in the editor.
-        </p>
-
-        <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
-          <Link
-            to={`/f/${slug}`}
-            className="rounded-full bg-coral px-6 py-3 text-sm font-medium text-white transition hover:bg-coral-dark"
-          >
-            Try it out
-          </Link>
-          <Link
-            to={`/dashboard/${slug}/edit`}
-            className="rounded-full border border-stone-900/10 px-6 py-3 text-sm font-medium text-stone-700 transition hover:border-stone-900"
-          >
-            Edit in editor
-          </Link>
-          <Link
-            to="/dashboard"
-            className="rounded-full border border-stone-900/10 px-6 py-3 text-sm font-medium text-stone-700 transition hover:border-stone-900"
-          >
-            Dashboard
-          </Link>
-        </div>
-      </section>
-    </main>
+        )}
+        {connecting && (
+          <div className="h-5 w-5 rounded-full border-2 border-white border-t-transparent animate-spin" />
+        )}
+        {active && (
+          <div className="flex items-center gap-1">
+            {[0, 1, 2].map((i) => (
+              <div
+                key={i}
+                className={`w-1 rounded-full bg-white transition-all duration-300 ${
+                  isSpeaking
+                    ? "animate-pulse"
+                    : ""
+                }`}
+                style={{
+                  height: isSpeaking ? `${14 + Math.sin(i * 2) * 8}px` : "8px",
+                  animationDelay: `${i * 150}ms`,
+                }}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </button>
   );
 }
 
-// ── Voice Form Creator Canvas ───────────────────────────────────────────────
+// ── Creator Canvas ──────────────────────────────────────────────────────────
 
 function CreatorCanvas() {
   const [draft, setDraft] = useState<FormDraft>(emptyDraft);
@@ -108,35 +132,27 @@ function CreatorCanvas() {
   const [starting, setStarting] = useState(false);
   const [saving, setSaving] = useState(false);
   const draftRef = useRef<FormDraft>(emptyDraft());
-  const [transcript, setTranscript] = useState<TranscriptEntry[]>([
-    {
-      id: "system-ready",
-      role: "system",
-      text: "Ready. Press the button to start designing your form by voice.",
-    },
-  ]);
+  const transcriptEndRef = useRef<HTMLDivElement>(null);
+  const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
 
   const fieldCount = useMemo(() => draft.fields.length, [draft.fields]);
+
+  // Auto-scroll transcript
+  useEffect(() => {
+    transcriptEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [transcript]);
 
   const conversation = useConversation({
     onConnect: ({ conversationId }) => {
       setTranscript((t) => [
         ...t,
-        {
-          id: `connected-${conversationId}`,
-          role: "system",
-          text: "Voice session connected.",
-        },
+        { id: `connected-${conversationId}`, role: "system", text: "Connected." },
       ]);
     },
     onDisconnect: () => {
       setTranscript((t) => [
         ...t,
-        {
-          id: `disconnected-${Date.now()}`,
-          role: "system",
-          text: "Voice session closed.",
-        },
+        { id: `disconnected-${Date.now()}`, role: "system", text: "Session ended." },
       ]);
     },
     onError: (message) => {
@@ -159,7 +175,7 @@ function CreatorCanvas() {
     },
   });
 
-  // ── Helpers to update draft ───────────────────────────────────────────────
+  // ── Draft helpers ─────────────────────────────────────────────────────────
 
   function updateDraft(patch: Partial<FormDraft>) {
     const next = { ...draftRef.current, ...patch };
@@ -180,7 +196,7 @@ function CreatorCanvas() {
     const title = (params.title ?? "").trim();
     if (!title) return "No title provided.";
     updateDraft({ title, description: (params.description ?? "").trim() });
-    return `Form title set to "${title}".`;
+    return "Done.";
   };
 
   const addQuestion = (params: {
@@ -199,25 +215,18 @@ function CreatorCanvas() {
     const type: FieldType = VALID_TYPES.has(params.type ?? "") ? (params.type as FieldType) : "text";
     const id = (params.id ?? label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "")).slice(0, 32);
 
-    const field: FormField = {
-      id,
-      label,
-      type,
-      required: params.required !== false,
-    };
+    const field: FormField = { id, label, type, required: params.required !== false };
 
     if (params.options?.length && (type === "enum" || type === "multi_select")) {
       field.options = params.options;
     }
-    if (params.description) {
-      field.description = params.description;
-    }
+    if (params.description) field.description = params.description;
     if (type === "scale") {
       field.validation = { min: params.min ?? 1, max: params.max ?? 10 };
     }
 
     updateFields((prev) => [...prev, field]);
-    return `Added question ${draftRef.current.fields.length}: "${label}" (${type}).`;
+    return `Done. ${draftRef.current.fields.length} questions so far.`;
   };
 
   const updateQuestion = (params: {
@@ -230,7 +239,6 @@ function CreatorCanvas() {
   }) => {
     const idx = params.index ?? -1;
     if (idx < 0 || idx >= draftRef.current.fields.length) return "Invalid question index.";
-
     updateFields((prev) =>
       prev.map((f, i) => {
         if (i !== idx) return f;
@@ -243,15 +251,14 @@ function CreatorCanvas() {
         return updated;
       }),
     );
-    return `Updated question ${idx + 1}.`;
+    return "Done.";
   };
 
   const removeQuestion = (params: { index?: number }) => {
     const idx = params.index ?? -1;
     if (idx < 0 || idx >= draftRef.current.fields.length) return "Invalid question index.";
-    const removed = draftRef.current.fields[idx]!;
     updateFields((prev) => prev.filter((_, i) => i !== idx));
-    return `Removed question "${removed.label}".`;
+    return "Done.";
   };
 
   const setVoiceConfig = (params: { greeting?: string; personality?: string }) => {
@@ -259,7 +266,7 @@ function CreatorCanvas() {
     if (params.greeting) patch.greeting = params.greeting.trim();
     if (params.personality) patch.personality = params.personality.trim();
     updateDraft(patch);
-    return "Voice config updated.";
+    return "Done.";
   };
 
   const finalizeForm = () => {
@@ -283,11 +290,7 @@ function CreatorCanvas() {
         console.error("Failed to create form:", err);
         setTranscript((t) => [
           ...t,
-          {
-            id: `create-error-${Date.now()}`,
-            role: "system",
-            text: "Failed to create form. Please try again.",
-          },
+          { id: `create-error-${Date.now()}`, role: "system", text: "Failed to create form. Please try again." },
         ]);
       })
       .finally(() => setSaving(false));
@@ -295,7 +298,6 @@ function CreatorCanvas() {
     return "Creating your form now...";
   };
 
-  // Register all client tools
   useConversationClientTool("set_form_title", setFormTitle);
   useConversationClientTool("add_question", addQuestion);
   useConversationClientTool("update_question", updateQuestion);
@@ -303,7 +305,7 @@ function CreatorCanvas() {
   useConversationClientTool("set_voice_config", setVoiceConfig);
   useConversationClientTool("finalize_form", finalizeForm);
 
-  // ── Start session ─────────────────────────────────────────────────────────
+  // ── Start / stop ──────────────────────────────────────────────────────────
 
   const handleStart = async () => {
     setStarting(true);
@@ -315,7 +317,7 @@ function CreatorCanvas() {
           agent: {
             prompt: { prompt: buildFormCreatorPrompt() },
             firstMessage:
-              "Hey! I'm here to help you build a new form. What kind of information do you want to collect?",
+              "Hey! Tell me what you need — what's this form for and who's going to fill it out?",
             language: "en" as const,
           },
         },
@@ -325,272 +327,138 @@ function CreatorCanvas() {
     }
   };
 
-  // ── Show success if created ───────────────────────────────────────────────
+  const handleOrbClick = () => {
+    if (conversation.status === "connected") {
+      conversation.endSession();
+    } else if (conversation.status === "disconnected") {
+      void handleStart();
+    }
+  };
+
+  // ── Success → redirect to form detail ─────────────────────────────────────
 
   if (created) {
-    return <FormCreated slug={created.slug} title={created.title} />;
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center bg-cream px-6 text-center">
+        <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-coral/10">
+          <svg className="h-7 w-7 text-coral" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+        <h1 className="font-display text-4xl font-semibold tracking-tight">
+          {created.title}
+        </h1>
+        <p className="mt-2 text-stone-500">Your form is live.</p>
+        <div className="mt-8 flex gap-3">
+          <Link
+            to={`/f/${created.slug}`}
+            className="rounded-full bg-coral px-6 py-2.5 text-sm font-medium text-white transition hover:bg-coral-dark"
+          >
+            Try it
+          </Link>
+          <Link
+            to="/dashboard"
+            className="rounded-full border border-stone-200 px-6 py-2.5 text-sm font-medium text-stone-700 transition hover:bg-stone-50"
+          >
+            Dashboard
+          </Link>
+        </div>
+      </main>
+    );
   }
 
   // ── Main UI ───────────────────────────────────────────────────────────────
 
+  const isConnected = conversation.status === "connected";
+  const isIdle = conversation.status === "disconnected" && transcript.length === 0;
+
   return (
-    <main className="relative min-h-screen overflow-hidden bg-cream text-stone-900">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,107,90,0.2),transparent_40%),linear-gradient(135deg,rgba(255,255,255,0.4),transparent_55%)]" />
-      <div className="pointer-events-none absolute -left-24 top-10 h-64 w-64 rounded-full bg-coral/15 blur-3xl" />
-      <div className="pointer-events-none absolute bottom-0 right-0 h-80 w-80 rounded-full bg-stone-900/8 blur-3xl" />
+    <main className="flex min-h-screen flex-col bg-cream">
+      {/* Top bar */}
+      <header className="flex items-center justify-between px-6 py-4">
+        <Link
+          to="/dashboard"
+          className="text-sm text-stone-400 transition hover:text-stone-900"
+        >
+          &larr; Back
+        </Link>
+        {fieldCount > 0 && (
+          <span className="text-xs text-stone-400">
+            {fieldCount} question{fieldCount !== 1 ? "s" : ""}
+            {draft.title ? ` · ${draft.title}` : ""}
+          </span>
+        )}
+      </header>
 
-      <section className="relative mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-8 px-6 py-8 lg:grid lg:grid-cols-[1.2fr_0.8fr]">
-        {/* Left column — conversation */}
-        <div className="flex flex-col justify-between rounded-[2rem] border border-stone-900/10 bg-white/70 p-6 shadow-[0_24px_80px_rgba(38,24,18,0.08)] backdrop-blur xl:p-8">
-          <div>
-            <div className="flex items-center justify-between">
-              <Link
-                to="/dashboard"
-                className="text-sm uppercase tracking-[0.24em] text-stone-500 transition hover:text-stone-900"
-              >
-                &larr; Dashboard
-              </Link>
-              <span className="rounded-full border border-stone-900/10 px-4 py-2 text-xs uppercase tracking-[0.24em] text-stone-500">
-                {formatStatus(conversation.status)}
-              </span>
-            </div>
+      {/* Center content */}
+      <div className="flex flex-1 flex-col items-center justify-center px-6">
+        {/* Pre-start state */}
+        {isIdle && (
+          <p className="mb-16 max-w-xs text-center text-lg leading-relaxed text-stone-400">
+            Describe your form and we'll build it together.
+          </p>
+        )}
 
-            <div className="mt-10 max-w-2xl">
-              <p className="text-sm uppercase tracking-[0.3em] text-coral-dark">
-                Form designer
-              </p>
-              <h1 className="mt-3 font-display text-5xl leading-none font-semibold tracking-tight md:text-7xl">
-                {draft.title || "Create by voice"}
-              </h1>
-              {draft.description && (
-                <p className="mt-5 max-w-xl text-lg leading-8 text-stone-600">
-                  {draft.description}
-                </p>
-              )}
-            </div>
+        {/* Orb */}
+        <VoiceOrb
+          status={conversation.status}
+          isSpeaking={conversation.isSpeaking}
+          isListening={conversation.isListening}
+          onClick={handleOrbClick}
+          disabled={starting || saving}
+        />
 
-            {/* Stats */}
-            <div className="mt-10 grid gap-4 md:grid-cols-3">
-              <div className="rounded-[1.5rem] border border-stone-900/10 bg-stone-900 px-5 py-6 text-cream">
-                <p className="text-xs uppercase tracking-[0.24em] text-cream/60">
-                  Questions
-                </p>
-                <p className="mt-3 text-4xl font-semibold">{fieldCount}</p>
-              </div>
-              <div className="rounded-[1.5rem] border border-stone-900/10 bg-white px-5 py-6">
-                <p className="text-xs uppercase tracking-[0.24em] text-stone-400">
-                  Title
-                </p>
-                <p className="mt-3 text-lg font-semibold truncate">
-                  {draft.title || "..."}
-                </p>
-              </div>
-              <div className="rounded-[1.5rem] border border-stone-900/10 bg-white px-5 py-6">
-                <p className="text-xs uppercase tracking-[0.24em] text-stone-400">
-                  Mode
-                </p>
-                <p className="mt-3 text-2xl font-semibold capitalize">
-                  {conversation.mode}
-                </p>
-              </div>
-            </div>
+        {/* Status label */}
+        <p className="mt-10 text-xs uppercase tracking-[0.3em] text-stone-400">
+          {saving
+            ? "Creating..."
+            : starting
+              ? "Connecting..."
+              : isConnected
+                ? conversation.isSpeaking
+                  ? "Speaking"
+                  : "Listening"
+                : isIdle
+                  ? "Tap to start"
+                  : "Done"}
+        </p>
 
-            {/* Controls */}
-            <div className="mt-8 flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                onClick={() => void handleStart()}
-                disabled={
-                  starting ||
-                  saving ||
-                  conversation.status === "connecting" ||
-                  conversation.status === "connected"
-                }
-                className="rounded-full bg-coral px-6 py-3 text-sm font-medium text-white transition hover:bg-coral-dark disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {starting
-                  ? "Connecting..."
-                  : conversation.status === "connected"
-                    ? "Live now"
-                    : "Start designing"}
-              </button>
-              <button
-                type="button"
-                onClick={() => void conversation.endSession()}
-                disabled={conversation.status !== "connected"}
-                className="rounded-full border border-stone-900/10 px-6 py-3 text-sm font-medium text-stone-700 transition hover:border-stone-900 hover:text-stone-900 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                End session
-              </button>
-              <button
-                type="button"
-                onClick={() => conversation.setMuted(!conversation.isMuted)}
-                className="rounded-full border border-stone-900/10 bg-white px-6 py-3 text-sm font-medium text-stone-700 transition hover:border-stone-900 hover:text-stone-900"
-              >
-                {conversation.isMuted ? "Unmute mic" : "Mute mic"}
-              </button>
-            </div>
-
-            {/* Transcript */}
-            <div className="mt-10 rounded-[1.75rem] border border-stone-900/10 bg-[#fffaf5] p-5">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.24em] text-stone-400">
-                    Live transcript
-                  </p>
-                  <p className="mt-2 text-sm text-stone-500">
-                    Describe your form — the AI builds it.
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  <span
-                    className={`h-3 w-3 rounded-full ${conversation.isListening ? "bg-coral" : "bg-stone-300"}`}
-                  />
-                  <span
-                    className={`h-3 w-3 rounded-full ${conversation.isSpeaking ? "bg-stone-900" : "bg-stone-300"}`}
-                  />
-                </div>
-              </div>
-
-              <div className="mt-5 max-h-[22rem] space-y-3 overflow-y-auto pr-2">
-                {transcript.map((entry) => (
-                  <article
+        {/* Transcript */}
+        {transcript.length > 0 && (
+          <div className="mt-10 w-full max-w-lg">
+            <div className="max-h-[40vh] space-y-3 overflow-y-auto px-2">
+              {transcript
+                .filter((e) => e.role !== "system")
+                .map((entry) => (
+                  <div
                     key={entry.id}
-                    className={`rounded-[1.25rem] px-4 py-3 ${
+                    className={`${
                       entry.role === "agent"
-                        ? "mr-8 bg-white"
-                        : entry.role === "user"
-                          ? "ml-8 bg-coral text-white"
-                          : "border border-dashed border-stone-900/10 bg-transparent text-stone-500"
+                        ? "text-stone-900"
+                        : "text-stone-400"
                     }`}
                   >
-                    <p className="text-xs uppercase tracking-[0.2em] opacity-60">
-                      {entry.role}
-                    </p>
-                    <p className="mt-2 text-sm leading-6">{entry.text}</p>
-                  </article>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Right column — form preview */}
-        <aside className="rounded-[2rem] border border-stone-900/10 bg-stone-900 p-6 text-cream shadow-[0_24px_80px_rgba(38,24,18,0.15)] xl:p-8">
-          <p className="text-xs uppercase tracking-[0.24em] text-cream/50">
-            Live preview
-          </p>
-          <h2 className="mt-3 font-display text-3xl">Form blueprint</h2>
-
-          {/* Title preview */}
-          <div className="mt-8 rounded-[1.5rem] border border-white/10 bg-white/5 p-5">
-            <p className="text-xs uppercase tracking-[0.24em] text-cream/40">
-              Title
-            </p>
-            <p className="mt-2 text-lg font-semibold text-cream">
-              {draft.title || "Waiting..."}
-            </p>
-            {draft.description && (
-              <p className="mt-1 text-sm text-cream/60">{draft.description}</p>
-            )}
-          </div>
-
-          {/* Questions preview */}
-          <div className="mt-4 space-y-4">
-            {draft.fields.length === 0 ? (
-              <div className="rounded-[1.5rem] border border-dashed border-white/10 p-5 text-center">
-                <p className="text-sm text-cream/40">
-                  Questions will appear here as you describe them.
-                </p>
-              </div>
-            ) : (
-              draft.fields.map((field, index) => (
-                <article
-                  key={field.id}
-                  className="rounded-[1.5rem] border border-white/10 bg-white/5 p-5"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="text-xs uppercase tracking-[0.24em] text-cream/40">
-                        {String(index + 1).padStart(2, "0")}
-                      </p>
-                      <p className="mt-2 text-base leading-6 text-cream">
-                        {field.label}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {field.required && (
-                        <span className="rounded-full border border-coral/30 px-2 py-0.5 text-[10px] uppercase tracking-[0.24em] text-coral-light">
-                          req
-                        </span>
-                      )}
-                      <span className="rounded-full border border-white/10 px-3 py-1 text-[10px] uppercase tracking-[0.24em] text-cream/40">
-                        {field.type}
-                      </span>
-                    </div>
+                    <p className="text-sm leading-relaxed">{entry.text}</p>
                   </div>
-                  {field.options && field.options.length > 0 && (
-                    <div className="mt-3 flex flex-wrap gap-1.5">
-                      {field.options.map((opt) => (
-                        <span
-                          key={opt}
-                          className="rounded-full border border-white/10 px-2.5 py-1 text-xs text-cream/60"
-                        >
-                          {opt}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                  {field.type === "scale" && field.validation && (
-                    <p className="mt-3 text-xs text-cream/40">
-                      Scale: {field.validation.min ?? 1} – {field.validation.max ?? 10}
-                    </p>
-                  )}
-                  {field.description && (
-                    <p className="mt-2 text-xs text-cream/30 italic">
-                      {field.description}
-                    </p>
-                  )}
-                </article>
-              ))
-            )}
-          </div>
-
-          {/* Voice config preview */}
-          {(draft.greeting || draft.personality) && (
-            <div className="mt-4 rounded-[1.5rem] border border-white/10 bg-white/5 p-5">
-              <p className="text-xs uppercase tracking-[0.24em] text-cream/40">
-                Voice config
-              </p>
-              {draft.personality && (
-                <p className="mt-2 text-sm text-cream/70">
-                  <span className="text-cream/40">Personality:</span>{" "}
-                  {draft.personality}
-                </p>
-              )}
-              {draft.greeting && (
-                <p className="mt-1 text-sm text-cream/70">
-                  <span className="text-cream/40">Greeting:</span>{" "}
-                  {draft.greeting}
-                </p>
-              )}
+                ))}
+              <div ref={transcriptEndRef} />
             </div>
-          )}
-
-          <div className="mt-8 rounded-[1.5rem] border border-coral/20 bg-coral/10 p-5">
-            <p className="text-xs uppercase tracking-[0.24em] text-coral-light">
-              Status
-            </p>
-            <p className="mt-3 text-sm leading-7 text-cream/80">
-              {saving
-                ? "Creating your form..."
-                : fieldCount === 0
-                  ? "Describe your form and the AI will structure it for you."
-                  : `${fieldCount} question${fieldCount === 1 ? "" : "s"} added. Keep going or say you're done.`}
-            </p>
           </div>
-        </aside>
-      </section>
+        )}
+      </div>
+
+      {/* Bottom — end session button when connected */}
+      {isConnected && (
+        <div className="flex justify-center px-6 pb-8">
+          <button
+            type="button"
+            onClick={() => conversation.endSession()}
+            className="rounded-full border border-stone-200 px-5 py-2 text-sm text-stone-500 transition hover:border-stone-400 hover:text-stone-700"
+          >
+            End session
+          </button>
+        </div>
+      )}
     </main>
   );
 }

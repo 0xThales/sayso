@@ -37,7 +37,12 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY}>
+    <ClerkProvider
+      publishableKey={CLERK_PUBLISHABLE_KEY}
+      signInUrl="/sign-in"
+      signUpUrl="/sign-up"
+      afterSignOutUrl="/"
+    >
       <BrowserRouter>
         <Routes>
           <Route element={<App />}>
