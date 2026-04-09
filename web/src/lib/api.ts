@@ -10,8 +10,8 @@ export function setTokenGetter(fn: () => Promise<string | null>) {
   _getToken = fn;
 }
 
-async function authHeaders(): Promise<HeadersInit> {
-  const headers: HeadersInit = { "Content-Type": "application/json" };
+async function authHeaders(): Promise<Record<string, string>> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (_getToken) {
     const token = await _getToken();
     if (token) headers["Authorization"] = `Bearer ${token}`;
@@ -101,6 +101,89 @@ export async function fetchResponses(slug: string): Promise<FormResponse[]> {
   });
   if (!res.ok) throw new Error(`Failed to load responses: ${res.statusText}`);
   return res.json();
+}
+
+export type ResponseStreamEvent =
+  | { type: "connected"; payload: { ok: true; slug: string } }
+  | { type: "ping"; payload: { ts: number } }
+  | { type: "response.created"; payload: { response: FormResponse } };
+
+function parseSseEvent(block: string): ResponseStreamEvent | null {
+  const lines = block
+    .split("\n")
+    .map((line) => line.trimEnd())
+    .filter(Boolean);
+
+  if (lines.length === 0) return null;
+
+  let event = "message";
+  const dataLines: string[] = [];
+
+  for (const line of lines) {
+    if (line.startsWith("event:")) {
+      event = line.slice(6).trim();
+    } else if (line.startsWith("data:")) {
+      dataLines.push(line.slice(5).trim());
+    }
+  }
+
+  if (dataLines.length === 0) return null;
+
+  const payload = JSON.parse(dataLines.join("\n")) as unknown;
+
+  if (event === "connected" || event === "ping" || event === "response.created") {
+    return { type: event, payload } as ResponseStreamEvent;
+  }
+
+  return null;
+}
+
+export async function subscribeToResponsesStream(
+  slug: string,
+  onEvent: (event: ResponseStreamEvent) => void,
+): Promise<() => void> {
+  const controller = new AbortController();
+  const headers = await authHeaders();
+  delete headers["Content-Type"];
+
+  const res = await fetch(`${API_BASE}/api/forms/${slug}/responses/stream`, {
+    headers,
+    signal: controller.signal,
+  });
+
+  if (!res.ok || !res.body) {
+    throw new Error(`Failed to subscribe to responses: ${res.statusText}`);
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  void (async () => {
+    try {
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+
+        let boundaryIndex = buffer.indexOf("\n\n");
+        while (boundaryIndex !== -1) {
+          const rawEvent = buffer.slice(0, boundaryIndex);
+          buffer = buffer.slice(boundaryIndex + 2);
+          const event = parseSseEvent(rawEvent);
+          if (event) onEvent(event);
+          boundaryIndex = buffer.indexOf("\n\n");
+        }
+      }
+    } catch (error) {
+      if ((error as Error).name !== "AbortError") {
+        console.error("Responses stream closed unexpectedly:", error);
+      }
+    }
+  })();
+
+  return () => controller.abort();
 }
 
 export async function submitResponse(

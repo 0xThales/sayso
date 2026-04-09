@@ -79,3 +79,13 @@ export interface FormFieldDef {
   options?: string[];
   validation?: FieldValidation;
 }
+
+export interface FormResponse {
+  id: string;
+  formId: string;
+  answers: Record<string, unknown>;
+  completed: boolean;
+  completedAt: Date | null;
+  duration: number | null;
+  createdAt: Date;
+}
