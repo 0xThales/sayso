@@ -4,6 +4,10 @@ import { BrowserRouter, Routes, Route } from "react-router";
 import App from "./App";
 import { Landing } from "./pages/Landing";
 import { FormView } from "./pages/FormView";
+import { Dashboard } from "./pages/Dashboard";
+import { FormEditor } from "./pages/FormEditor";
+import { FormDetail } from "./pages/FormDetail";
+import { VoiceFormCreator } from "./pages/VoiceFormCreator";
 import "./index.css";
 
 createRoot(document.getElementById("root")!).render(
@@ -13,6 +17,11 @@ createRoot(document.getElementById("root")!).render(
         <Route element={<App />}>
           <Route index element={<Landing />} />
           <Route path="f/:slug" element={<FormView />} />
+          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="dashboard/new" element={<FormEditor />} />
+          <Route path="dashboard/new/voice" element={<VoiceFormCreator />} />
+          <Route path="dashboard/:slug" element={<FormDetail />} />
+          <Route path="dashboard/:slug/edit" element={<FormEditor />} />
         </Route>
       </Routes>
     </BrowserRouter>

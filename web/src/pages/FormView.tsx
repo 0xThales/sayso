@@ -173,6 +173,7 @@ function VoiceFormCanvas({ form }: { form: Form }) {
   const [completed, setCompleted] = useState(false);
   const [starting, setStarting] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const answersRef = useRef<Record<string, string>>(createInitialAnswers(form));
   const startTimeRef = useRef<number | null>(null);
   const slugRef = useRef(form.slug);
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([
@@ -237,7 +238,15 @@ function VoiceFormCanvas({ form }: { form: Form }) {
     const fieldId = params.fieldId ?? params.field ?? params.questionId;
     const value = (params.value ?? params.answer ?? "").trim();
     if (!fieldId || !value) return "No answer saved — incomplete payload.";
-    setAnswers((curr) => ({ ...curr, [fieldId]: value }));
+
+    const nextAnswers = {
+      ...answersRef.current,
+      [fieldId]: value,
+    };
+
+    answersRef.current = nextAnswers;
+    setAnswers(nextAnswers);
+
     return `Saved answer for ${fieldId}.`;
   };
 
@@ -245,10 +254,12 @@ function VoiceFormCanvas({ form }: { form: Form }) {
     const duration = startTimeRef.current
       ? Math.round((Date.now() - startTimeRef.current) / 1000)
       : 0;
+    const answersToSubmit = answersRef.current;
 
     setSubmitting(true);
-    submitResponse(slugRef.current, answers, duration)
+    submitResponse(slugRef.current, answersToSubmit, duration)
       .then(() => {
+        setAnswers(answersToSubmit);
         setCompleted(true);
         conversation.endSession();
       })
@@ -512,15 +523,31 @@ export function FormView() {
 
   useEffect(() => {
     if (!slug) return;
+
+    let cancelled = false;
+
+    setForm(null);
+    setError(null);
+    setNotFound(false);
+
     fetchForm(slug)
-      .then(setForm)
+      .then((nextForm) => {
+        if (cancelled) return;
+        setForm(nextForm);
+      })
       .catch((err) => {
+        if (cancelled) return;
+
         if (err instanceof FormNotFoundError) {
           setNotFound(true);
         } else {
           setError(err instanceof Error ? err.message : "Unknown error");
         }
       });
+
+    return () => {
+      cancelled = true;
+    };
   }, [slug]);
 
   if (notFound) return <FormNotFound />;
@@ -529,7 +556,7 @@ export function FormView() {
 
   return (
     <ConversationProvider>
-      <VoiceFormCanvas form={form} />
+      <VoiceFormCanvas key={form.slug} form={form} />
     </ConversationProvider>
   );
 }

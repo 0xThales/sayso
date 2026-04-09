@@ -196,7 +196,7 @@ export function Landing() {
             </a>
           </div>
           <Link
-            to="/f/clinical-intake"
+            to="/dashboard"
             className="group relative inline-flex items-center gap-2 overflow-hidden rounded-full bg-black px-5 py-2.5 text-sm font-medium text-white transition"
           >
             <span className="relative z-10">Try a demo</span>
@@ -277,7 +277,7 @@ export function Landing() {
           <Reveal delay={1.1}>
             <div className="flex flex-wrap items-center gap-3">
               <MagneticButton
-                href="/f/clinical-intake"
+                href="/dashboard"
                 className="group inline-flex items-center gap-2 rounded-full bg-black px-7 py-4 text-sm font-medium text-white"
               >
                 Try a live demo
@@ -667,7 +667,7 @@ convo.startSession({
           <Reveal delay={0.2}>
             <div className="mt-16 flex flex-wrap items-center justify-center gap-4">
               <MagneticButton
-                href="/f/clinical-intake"
+                href="/dashboard"
                 className="group inline-flex items-center gap-2 rounded-full bg-white px-10 py-6 text-base font-medium text-black"
               >
                 Try a live demo
@@ -698,7 +698,7 @@ convo.startSession({
             <a href="#features" className="hover:text-black">Features</a>
             <a href="#use-cases" className="hover:text-black">Use cases</a>
             <a href="#developers" className="hover:text-black">Developers</a>
-            <Link to="/f/clinical-intake" className="hover:text-black">Demo</Link>
+            <Link to="/dashboard" className="hover:text-black">Demo</Link>
           </div>
           <p className="text-[10px] uppercase tracking-[0.28em] text-black/40">
             © {new Date().getFullYear()} sayso — the voice is the form
