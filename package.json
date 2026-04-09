@@ -2,8 +2,14 @@
   "name": "sayso",
   "private": true,
   "scripts": {
+    "setup": "pnpm install",
+    "start": "pnpm install && pnpm dev",
     "dev": "concurrently -n web,api -c blue,green \"pnpm --filter web dev\" \"pnpm --filter api dev\"",
-    "build": "pnpm --filter web build && pnpm --filter api build"
+    "dev:web": "pnpm --filter web dev",
+    "dev:api": "pnpm --filter api dev",
+    "build": "pnpm --filter web build && pnpm --filter api build",
+    "clean": "rm -rf node_modules web/node_modules api/node_modules",
+    "reset": "pnpm clean && pnpm install"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"
