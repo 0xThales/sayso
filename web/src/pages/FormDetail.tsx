@@ -1,7 +1,133 @@
 import { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router";
 import { fetchForm, fetchResponses, deleteForm } from "@/lib/api";
-import type { Form, FormResponse } from "@/types/forms";
+import type { Form, FormField, FormResponse } from "@/types/forms";
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function shortLabel(field: FormField): string {
+  // Strip leading "What is your" / "Do you" / "Are you" etc. and use a compact label
+  const raw = field.label
+    .replace(/^(what is |what are |what's |do you |are you |have you |how |which )/i, "")
+    .replace(/\?$/, "")
+    .trim();
+  // Capitalize first letter
+  return raw.charAt(0).toUpperCase() + raw.slice(1);
+}
+
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function formatDuration(seconds?: number | null): string | null {
+  if (!seconds) return null;
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  if (m === 0) return `${s}s`;
+  return `${m}m ${s}s`;
+}
+
+// ── Response Card ────────────────────────────────────────────────────────────
+
+function ResponseCard({
+  response,
+  fields,
+  index,
+}: {
+  response: FormResponse;
+  fields: FormField[];
+  index: number;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const answered = fields.filter((f) => response.answers[f.id] != null && response.answers[f.id] !== "");
+  const duration = formatDuration(response.duration);
+
+  // Show first 4 answered fields in collapsed, all when expanded
+  const visible = expanded ? answered : answered.slice(0, 4);
+  const hasMore = answered.length > 4;
+
+  // Find a "name" field for the card title
+  const nameField = fields.find(
+    (f) => f.id === "name" || f.id === "full_name" || f.type === "text",
+  );
+  const title = nameField ? String(response.answers[nameField.id] ?? `Response ${index}`) : `Response ${index}`;
+
+  return (
+    <div className="rounded-2xl border border-stone-200 bg-white transition hover:border-stone-300">
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className="flex w-full items-center justify-between px-6 py-4 text-left"
+      >
+        <div className="min-w-0">
+          <div className="flex items-center gap-3">
+            <span className="font-display text-lg font-semibold tracking-tight">
+              {title}
+            </span>
+            <span className="rounded-full bg-stone-100 px-2.5 py-0.5 text-xs text-stone-500">
+              {answered.length}/{fields.length} answered
+            </span>
+          </div>
+          <div className="mt-0.5 flex gap-3 text-xs text-stone-400">
+            <span>{formatDate(response.createdAt)}</span>
+            {duration && <span>&middot; {duration}</span>}
+          </div>
+        </div>
+        <svg
+          className={`h-5 w-5 shrink-0 text-stone-400 transition-transform ${expanded ? "rotate-180" : ""}`}
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {/* Answer grid */}
+      <div
+        className={`grid gap-x-6 gap-y-4 border-t border-stone-100 px-6 py-5 ${
+          expanded ? "sm:grid-cols-2" : "sm:grid-cols-2"
+        }`}
+      >
+        {visible.map((field) => {
+          const value = response.answers[field.id];
+          return (
+            <div key={field.id} className="min-w-0">
+              <dt className="text-xs font-medium uppercase tracking-wide text-stone-400">
+                {shortLabel(field)}
+              </dt>
+              <dd className="mt-0.5 text-sm leading-relaxed text-stone-900">
+                {String(value)}
+              </dd>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Expand toggle */}
+      {hasMore && !expanded && (
+        <div className="border-t border-stone-100 px-6 py-3">
+          <button
+            type="button"
+            onClick={() => setExpanded(true)}
+            className="text-xs font-medium text-stone-400 transition hover:text-stone-700"
+          >
+            +{answered.length - 4} more answers
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Page ─────────────────────────────────────────────────────────────────────
 
 export function FormDetail() {
   const { slug } = useParams();
@@ -10,6 +136,7 @@ export function FormDetail() {
   const [responses, setResponses] = useState<FormResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"responses" | "share">("responses");
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (!slug) return;
@@ -44,10 +171,10 @@ export function FormDetail() {
   const shareUrl = `${window.location.origin}/f/${form.slug}`;
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-stone-50">
       {/* Header */}
-      <header className="border-b border-stone-200">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-5">
+      <header className="border-b border-stone-200 bg-white">
+        <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-5">
           <Link
             to="/dashboard"
             className="text-sm text-stone-500 transition hover:text-stone-900"
@@ -71,7 +198,7 @@ export function FormDetail() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl px-6 py-12">
+      <main className="mx-auto max-w-3xl px-6 py-12">
         <h1 className="font-display text-4xl font-semibold tracking-tight">
           {form.title}
         </h1>
@@ -79,7 +206,7 @@ export function FormDetail() {
           <p className="mt-2 text-stone-500">{form.description}</p>
         )}
         <div className="mt-2 text-sm text-stone-400">
-          {form.fields.length} questions &middot; {responses.length} responses
+          {form.fields.length} questions &middot; {responses.length} response{responses.length !== 1 ? "s" : ""}
         </div>
 
         {/* Tabs */}
@@ -108,62 +235,20 @@ export function FormDetail() {
 
         {/* Responses tab */}
         {tab === "responses" && (
-          <div className="mt-6">
+          <div className="mt-6 space-y-4">
             {responses.length === 0 ? (
               <div className="py-16 text-center text-stone-400">
                 No responses yet. Share your form to start collecting answers.
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
-                  <thead>
-                    <tr className="border-b border-stone-200">
-                      <th className="pb-3 pr-4 font-medium text-stone-500">
-                        #
-                      </th>
-                      {form.fields.map((f) => (
-                        <th
-                          key={f.id}
-                          className="pb-3 pr-4 font-medium text-stone-500"
-                        >
-                          {f.label}
-                        </th>
-                      ))}
-                      <th className="pb-3 pr-4 font-medium text-stone-500">
-                        Date
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {responses.map((r, i) => (
-                      <tr
-                        key={r.id}
-                        className="border-b border-stone-100 last:border-0"
-                      >
-                        <td className="py-3 pr-4 text-stone-400">
-                          {responses.length - i}
-                        </td>
-                        {form.fields.map((f) => (
-                          <td
-                            key={f.id}
-                            className="max-w-[200px] truncate py-3 pr-4"
-                          >
-                            {String(r.answers[f.id] ?? "—")}
-                          </td>
-                        ))}
-                        <td className="py-3 pr-4 text-stone-400">
-                          {new Date(r.createdAt).toLocaleDateString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                            hour: "numeric",
-                            minute: "2-digit",
-                          })}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              responses.map((r, i) => (
+                <ResponseCard
+                  key={r.id}
+                  response={r}
+                  fields={form.fields}
+                  index={responses.length - i}
+                />
+              ))
             )}
           </div>
         )}
@@ -176,14 +261,22 @@ export function FormDetail() {
               that walks them through your form.
             </p>
             <div className="mt-4 flex items-center gap-3">
-              <code className="flex-1 rounded-xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm">
+              <code className="flex-1 rounded-xl border border-stone-200 bg-white px-4 py-3 text-sm">
                 {shareUrl}
               </code>
               <button
-                onClick={() => navigator.clipboard.writeText(shareUrl)}
-                className="rounded-full border border-stone-200 px-4 py-2.5 text-sm transition hover:bg-stone-50"
+                onClick={() => {
+                  navigator.clipboard.writeText(shareUrl);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 2000);
+                }}
+                className={`rounded-full border px-4 py-2.5 text-sm transition ${
+                  copied
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-600"
+                    : "border-stone-200 hover:bg-stone-50"
+                }`}
               >
-                Copy
+                {copied ? "Copied!" : "Copy"}
               </button>
             </div>
             <div className="mt-6">
