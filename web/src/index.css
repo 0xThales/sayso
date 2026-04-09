@@ -1,0 +1,16 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Fraunces", serif;
+  --font-body: "DM Sans", sans-serif;
+
+  --color-cream: #FFF8F0;
+  --color-coral: #FF6B5A;
+  --color-coral-light: #FF8A7A;
+  --color-coral-dark: #E5554A;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--color-cream);
+}

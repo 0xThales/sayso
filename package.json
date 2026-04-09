@@ -1,0 +1,11 @@
+{
+  "name": "sayso",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -n web,api -c blue,green \"pnpm --filter web dev\" \"pnpm --filter api dev\"",
+    "build": "pnpm --filter web build && pnpm --filter api build"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
