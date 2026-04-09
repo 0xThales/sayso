@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router";
 import {
   ConversationProvider,
@@ -6,8 +6,11 @@ import {
   useConversationClientTool,
 } from "@elevenlabs/react";
 import { getSignedUrl } from "@/lib/elevenlabs";
-import { buildAgentPrompt, getFormById } from "@/data/forms";
-import type { FormConfig } from "@/types/forms";
+import { fetchForm, submitResponse, FormNotFoundError } from "@/lib/api";
+import { buildAgentPrompt } from "@/lib/prompt";
+import type { Form } from "@/types/forms";
+
+// ── Types ────────────────────────────────────────────────────────────────────
 
 type TranscriptEntry = {
   id: string;
@@ -23,33 +26,160 @@ type SaveAnswerParams = {
   answer?: string;
 };
 
-type CompleteFormParams = {
-  note?: string;
-};
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatStatus(status: string) {
-  return status.replace(/^\w/, (value) => value.toUpperCase());
+  return status.replace(/^\w/, (v) => v.toUpperCase());
 }
 
-function createInitialAnswers(form: FormConfig) {
-  return Object.fromEntries(form.fields.map((field) => [field.id, ""]));
+function createInitialAnswers(form: Form) {
+  return Object.fromEntries(form.fields.map((f) => [f.id, ""]));
 }
 
-function buildFieldLabel(form: FormConfig, fieldId: string) {
-  return form.fields.find((field) => field.id === fieldId)?.label ?? fieldId;
+// ── Loading / Error / Not Found states ───────────────────────────────────────
+
+function Shell({ children }: { children: React.ReactNode }) {
+  return (
+    <main className="flex min-h-screen flex-col items-center justify-center gap-4 bg-cream px-6 text-center">
+      {children}
+    </main>
+  );
 }
 
-function VoiceFormCanvas({ form }: { form: FormConfig }) {
+function FormLoading() {
+  return (
+    <Shell>
+      <div className="h-8 w-8 animate-spin rounded-full border-2 border-coral border-t-transparent" />
+      <p className="text-sm text-stone-500">Loading form...</p>
+    </Shell>
+  );
+}
+
+function FormError({ message }: { message: string }) {
+  return (
+    <Shell>
+      <p className="text-sm uppercase tracking-[0.3em] text-stone-400">Error</p>
+      <h1 className="font-display text-4xl font-semibold tracking-tight">
+        Something went wrong
+      </h1>
+      <p className="max-w-md text-stone-600">{message}</p>
+      <Link
+        to="/"
+        className="rounded-full bg-coral px-6 py-3 text-sm font-medium text-white"
+      >
+        Back to home
+      </Link>
+    </Shell>
+  );
+}
+
+function FormNotFound() {
+  return (
+    <Shell>
+      <p className="text-sm uppercase tracking-[0.3em] text-stone-400">
+        Not found
+      </p>
+      <h1 className="font-display text-5xl font-semibold tracking-tight">
+        This form doesn't exist.
+      </h1>
+      <Link
+        to="/"
+        className="rounded-full bg-coral px-6 py-3 text-sm font-medium text-white"
+      >
+        Back to home
+      </Link>
+    </Shell>
+  );
+}
+
+// ── Thank You screen ─────────────────────────────────────────────────────────
+
+function ThankYou({
+  form,
+  answers,
+}: {
+  form: Form;
+  answers: Record<string, string>;
+}) {
+  const answeredFields = form.fields.filter((f) => answers[f.id]);
+
+  return (
+    <main className="relative min-h-screen overflow-hidden bg-cream text-stone-900">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,107,90,0.2),transparent_40%)]" />
+
+      <section className="relative mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center px-6 py-16 text-center">
+        <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-coral/10">
+          <svg
+            className="h-8 w-8 text-coral"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M5 13l4 4L19 7"
+            />
+          </svg>
+        </div>
+
+        <p className="text-sm uppercase tracking-[0.3em] text-coral-dark">
+          Complete
+        </p>
+        <h1 className="mt-3 font-display text-5xl font-semibold tracking-tight md:text-6xl">
+          Thank you
+        </h1>
+        <p className="mt-4 max-w-md text-lg text-stone-600">
+          Your responses have been recorded. A professional will review your
+          information.
+        </p>
+
+        {answeredFields.length > 0 && (
+          <div className="mt-10 w-full rounded-[1.5rem] border border-stone-900/10 bg-white/70 p-6 text-left backdrop-blur">
+            <p className="text-xs uppercase tracking-[0.24em] text-stone-400">
+              Summary
+            </p>
+            <div className="mt-4 space-y-3">
+              {answeredFields.map((field) => (
+                <div key={field.id}>
+                  <p className="text-xs text-stone-400">{field.label}</p>
+                  <p className="mt-1 text-sm text-stone-800">
+                    {answers[field.id]}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <Link
+          to="/"
+          className="mt-8 rounded-full border border-stone-900/10 px-6 py-3 text-sm font-medium text-stone-700 transition hover:border-stone-900"
+        >
+          Done
+        </Link>
+      </section>
+    </main>
+  );
+}
+
+// ── Voice Form Canvas ────────────────────────────────────────────────────────
+
+function VoiceFormCanvas({ form }: { form: Form }) {
   const [answers, setAnswers] = useState<Record<string, string>>(() =>
     createInitialAnswers(form),
   );
-  const [completedAt, setCompletedAt] = useState<string | null>(null);
+  const [completed, setCompleted] = useState(false);
   const [starting, setStarting] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const startTimeRef = useRef<number | null>(null);
+  const slugRef = useRef(form.slug);
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([
     {
       id: "system-ready",
       role: "system",
-      text: "Mic access and your ElevenLabs agent are all this screen needs to turn the form into a conversation.",
+      text: "Ready to start. Press the button to begin the voice conversation.",
     },
   ]);
 
@@ -61,18 +191,19 @@ function VoiceFormCanvas({ form }: { form: FormConfig }) {
 
   const conversation = useConversation({
     onConnect: ({ conversationId }) => {
-      setTranscript((current) => [
-        ...current,
+      startTimeRef.current = Date.now();
+      setTranscript((t) => [
+        ...t,
         {
           id: `connected-${conversationId}`,
           role: "system",
-          text: "Live voice session connected.",
+          text: "Voice session connected.",
         },
       ]);
     },
     onDisconnect: () => {
-      setTranscript((current) => [
-        ...current,
+      setTranscript((t) => [
+        ...t,
         {
           id: `disconnected-${Date.now()}`,
           role: "system",
@@ -81,21 +212,16 @@ function VoiceFormCanvas({ form }: { form: FormConfig }) {
       ]);
     },
     onError: (message) => {
-      setTranscript((current) => [
-        ...current,
-        {
-          id: `error-${Date.now()}`,
-          role: "system",
-          text: `Error: ${message}`,
-        },
+      setTranscript((t) => [
+        ...t,
+        { id: `error-${Date.now()}`, role: "system", text: `Error: ${message}` },
       ]);
     },
     onMessage: (event) => {
       const text = event.message.trim();
       if (!text) return;
-
-      setTranscript((current) => [
-        ...current,
+      setTranscript((t) => [
+        ...t,
         {
           id: `${event.role}-${event.event_id ?? Date.now()}`,
           role: event.role,
@@ -105,49 +231,41 @@ function VoiceFormCanvas({ form }: { form: FormConfig }) {
     },
   });
 
-  useEffect(() => {
-    setAnswers(createInitialAnswers(form));
-    setCompletedAt(null);
-    setTranscript([
-      {
-        id: "system-ready",
-        role: "system",
-        text: "Mic access and your ElevenLabs agent are all this screen needs to turn the form into a conversation.",
-      },
-    ]);
-  }, [form]);
+  // ── Client tools ──────────────────────────────────────────────────────────
 
   const saveAnswer = (params: SaveAnswerParams) => {
     const fieldId = params.fieldId ?? params.field ?? params.questionId;
     const value = (params.value ?? params.answer ?? "").trim();
-
-    if (!fieldId || !value) {
-      return "No answer was saved because the payload was incomplete.";
-    }
-
-    setAnswers((current) => ({
-      ...current,
-      [fieldId]: value,
-    }));
-
+    if (!fieldId || !value) return "No answer saved — incomplete payload.";
+    setAnswers((curr) => ({ ...curr, [fieldId]: value }));
     return `Saved answer for ${fieldId}.`;
   };
 
-  const completeForm = ({ note }: CompleteFormParams = {}) => {
-    const timestamp = new Date().toISOString();
-    setCompletedAt(timestamp);
-    setTranscript((current) => [
-      ...current,
-      {
-        id: `complete-${timestamp}`,
-        role: "system",
-        text: note?.trim()
-          ? `Form completed. ${note.trim()}`
-          : "Form completed and ready for follow-up.",
-      },
-    ]);
+  const completeForm = () => {
+    const duration = startTimeRef.current
+      ? Math.round((Date.now() - startTimeRef.current) / 1000)
+      : 0;
 
-    return "Form marked as completed.";
+    setSubmitting(true);
+    submitResponse(slugRef.current, answers, duration)
+      .then(() => {
+        setCompleted(true);
+        conversation.endSession();
+      })
+      .catch((err) => {
+        console.error("Failed to submit response:", err);
+        setTranscript((t) => [
+          ...t,
+          {
+            id: `submit-error-${Date.now()}`,
+            role: "system",
+            text: "Failed to save responses. Please try again.",
+          },
+        ]);
+      })
+      .finally(() => setSubmitting(false));
+
+    return "Form completed. Saving responses...";
   };
 
   useConversationClientTool("save_form_answer", saveAnswer);
@@ -156,9 +274,10 @@ function VoiceFormCanvas({ form }: { form: FormConfig }) {
   useConversationClientTool("complete_form", completeForm);
   useConversationClientTool("submit_form", completeForm);
 
+  // ── Start session ─────────────────────────────────────────────────────────
+
   const handleStart = async () => {
     setStarting(true);
-
     try {
       const signedUrl = await getSignedUrl();
       conversation.startSession({
@@ -168,8 +287,8 @@ function VoiceFormCanvas({ form }: { form: FormConfig }) {
             prompt: { prompt: buildAgentPrompt(form) },
             firstMessage:
               form.greeting ??
-              "Hi. I'll guide the form by voice, one question at a time.",
-            language: "en",
+              "Hi. I'll guide you through a few questions — just answer naturally.",
+            language: (form.language ?? "en") as "en",
           },
         },
         dynamicVariables: {
@@ -183,6 +302,14 @@ function VoiceFormCanvas({ form }: { form: FormConfig }) {
     }
   };
 
+  // ── Show thank you if completed ───────────────────────────────────────────
+
+  if (completed) {
+    return <ThankYou form={form} answers={answers} />;
+  }
+
+  // ── Main UI ───────────────────────────────────────────────────────────────
+
   return (
     <main className="relative min-h-screen overflow-hidden bg-cream text-stone-900">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,107,90,0.2),transparent_40%),linear-gradient(135deg,rgba(255,255,255,0.4),transparent_55%)]" />
@@ -190,6 +317,7 @@ function VoiceFormCanvas({ form }: { form: FormConfig }) {
       <div className="pointer-events-none absolute bottom-0 right-0 h-80 w-80 rounded-full bg-stone-900/8 blur-3xl" />
 
       <section className="relative mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-8 px-6 py-8 lg:grid lg:grid-cols-[1.2fr_0.8fr]">
+        {/* Left column */}
         <div className="flex flex-col justify-between rounded-[2rem] border border-stone-900/10 bg-white/70 p-6 shadow-[0_24px_80px_rgba(38,24,18,0.08)] backdrop-blur xl:p-8">
           <div>
             <div className="flex items-center justify-between">
@@ -206,16 +334,19 @@ function VoiceFormCanvas({ form }: { form: FormConfig }) {
 
             <div className="mt-10 max-w-2xl">
               <p className="text-sm uppercase tracking-[0.3em] text-coral-dark">
-                Voice intake demo
+                Voice form
               </p>
               <h1 className="mt-3 font-display text-5xl leading-none font-semibold tracking-tight md:text-7xl">
                 {form.title}
               </h1>
-              <p className="mt-5 max-w-xl text-lg leading-8 text-stone-600">
-                {form.description}
-              </p>
+              {form.description && (
+                <p className="mt-5 max-w-xl text-lg leading-8 text-stone-600">
+                  {form.description}
+                </p>
+              )}
             </div>
 
+            {/* Stats */}
             <div className="mt-10 grid gap-4 md:grid-cols-3">
               <div className="rounded-[1.5rem] border border-stone-900/10 bg-stone-900 px-5 py-6 text-cream">
                 <p className="text-xs uppercase tracking-[0.24em] text-cream/60">
@@ -239,12 +370,14 @@ function VoiceFormCanvas({ form }: { form: FormConfig }) {
               </div>
             </div>
 
+            {/* Controls */}
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <button
                 type="button"
                 onClick={() => void handleStart()}
                 disabled={
                   starting ||
+                  submitting ||
                   conversation.status === "connecting" ||
                   conversation.status === "connected"
                 }
@@ -273,6 +406,7 @@ function VoiceFormCanvas({ form }: { form: FormConfig }) {
               </button>
             </div>
 
+            {/* Transcript */}
             <div className="mt-10 rounded-[1.75rem] border border-stone-900/10 bg-[#fffaf5] p-5">
               <div className="flex items-center justify-between gap-4">
                 <div>
@@ -280,20 +414,15 @@ function VoiceFormCanvas({ form }: { form: FormConfig }) {
                     Live transcript
                   </p>
                   <p className="mt-2 text-sm text-stone-500">
-                    The voice is the form. Every answer lands here and can also
-                    be saved through client tools.
+                    The voice is the form.
                   </p>
                 </div>
                 <div className="flex gap-2">
                   <span
-                    className={`h-3 w-3 rounded-full ${
-                      conversation.isListening ? "bg-coral" : "bg-stone-300"
-                    }`}
+                    className={`h-3 w-3 rounded-full ${conversation.isListening ? "bg-coral" : "bg-stone-300"}`}
                   />
                   <span
-                    className={`h-3 w-3 rounded-full ${
-                      conversation.isSpeaking ? "bg-stone-900" : "bg-stone-300"
-                    }`}
+                    className={`h-3 w-3 rounded-full ${conversation.isSpeaking ? "bg-stone-900" : "bg-stone-300"}`}
                   />
                 </div>
               </div>
@@ -321,21 +450,16 @@ function VoiceFormCanvas({ form }: { form: FormConfig }) {
           </div>
         </div>
 
+        {/* Right column — captured answers */}
         <aside className="rounded-[2rem] border border-stone-900/10 bg-stone-900 p-6 text-cream shadow-[0_24px_80px_rgba(38,24,18,0.15)] xl:p-8">
           <p className="text-xs uppercase tracking-[0.24em] text-cream/50">
             Structured output
           </p>
           <h2 className="mt-3 font-display text-3xl">Captured answers</h2>
-          <p className="mt-3 text-sm leading-7 text-cream/70">
-            These cards update when the agent calls the client tools. If your
-            agent only talks and does not save, the transcript still lets us
-            verify the flow while you wire the tool schema in ElevenLabs.
-          </p>
 
           <div className="mt-8 space-y-4">
             {form.fields.map((field, index) => {
               const value = answers[field.id];
-
               return (
                 <article
                   key={field.id}
@@ -347,7 +471,7 @@ function VoiceFormCanvas({ form }: { form: FormConfig }) {
                         {String(index + 1).padStart(2, "0")}
                       </p>
                       <p className="mt-2 text-base leading-6 text-cream">
-                        {buildFieldLabel(form, field.id)}
+                        {field.label}
                       </p>
                     </div>
                     <span className="rounded-full border border-white/10 px-3 py-1 text-[10px] uppercase tracking-[0.24em] text-cream/40">
@@ -367,9 +491,9 @@ function VoiceFormCanvas({ form }: { form: FormConfig }) {
               Completion
             </p>
             <p className="mt-3 text-sm leading-7 text-cream/80">
-              {completedAt
-                ? `Completed at ${new Date(completedAt).toLocaleTimeString()}.`
-                : "The form will mark itself complete when the agent calls the completion tool."}
+              {submitting
+                ? "Saving responses..."
+                : "The form will save automatically when the agent finishes all questions."}
             </p>
           </div>
         </aside>
@@ -378,28 +502,30 @@ function VoiceFormCanvas({ form }: { form: FormConfig }) {
   );
 }
 
-export function FormView() {
-  const { id } = useParams<{ id: string }>();
-  const form = getFormById(id);
+// ── Page component ───────────────────────────────────────────────────────────
 
-  if (!form) {
-    return (
-      <main className="flex min-h-screen flex-col items-center justify-center gap-4 px-6 text-center">
-        <p className="text-sm uppercase tracking-[0.3em] text-stone-400">
-          Unknown form
-        </p>
-        <h1 className="font-display text-5xl font-semibold tracking-tight">
-          Nothing wired here yet.
-        </h1>
-        <Link
-          to="/"
-          className="rounded-full bg-coral px-6 py-3 text-sm font-medium text-white"
-        >
-          Back to landing
-        </Link>
-      </main>
-    );
-  }
+export function FormView() {
+  const { slug } = useParams<{ slug: string }>();
+  const [form, setForm] = useState<Form | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [notFound, setNotFound] = useState(false);
+
+  useEffect(() => {
+    if (!slug) return;
+    fetchForm(slug)
+      .then(setForm)
+      .catch((err) => {
+        if (err instanceof FormNotFoundError) {
+          setNotFound(true);
+        } else {
+          setError(err instanceof Error ? err.message : "Unknown error");
+        }
+      });
+  }, [slug]);
+
+  if (notFound) return <FormNotFound />;
+  if (error) return <FormError message={error} />;
+  if (!form) return <FormLoading />;
 
   return (
     <ConversationProvider>

@@ -12,7 +12,7 @@ createRoot(document.getElementById("root")!).render(
       <Routes>
         <Route element={<App />}>
           <Route index element={<Landing />} />
-          <Route path="form/:id" element={<FormView />} />
+          <Route path="f/:slug" element={<FormView />} />
         </Route>
       </Routes>
     </BrowserRouter>
