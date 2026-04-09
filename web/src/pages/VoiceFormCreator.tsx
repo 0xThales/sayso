@@ -5,6 +5,7 @@ import {
   useConversation,
   useConversationClientTool,
 } from "@elevenlabs/react";
+import { motion, AnimatePresence } from "framer-motion";
 import { getSignedUrl } from "@/lib/elevenlabs";
 import { createForm } from "@/lib/api";
 import { buildFormCreatorPrompt } from "@/lib/prompt";
@@ -29,15 +30,63 @@ type FormDraft = {
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function emptyDraft(): FormDraft {
-  return { title: "", description: "", fields: [], greeting: "", personality: "" };
+  return {
+    title: "",
+    description: "",
+    fields: [],
+    greeting: "",
+    personality: "",
+  };
 }
 
 const VALID_TYPES = new Set<string>([
-  "text", "long_text", "number", "boolean", "enum",
-  "multi_select", "email", "date", "scale", "file",
+  "text",
+  "long_text",
+  "number",
+  "boolean",
+  "enum",
+  "multi_select",
+  "email",
+  "date",
+  "scale",
+  "file",
 ]);
 
-// ── Voice Orb ───────────────────────────────────────────────────────────────
+// ── Background ───────────────────────────────────────────────────────────────
+
+function DottedCanvas() {
+  return (
+    <>
+      {/* Dots pattern */}
+      <div
+        className="pointer-events-none fixed inset-0 z-0 opacity-[0.25]"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle, rgba(0,0,0,0.5) 1px, transparent 1px)",
+          backgroundSize: "28px 28px",
+        }}
+      />
+      {/* Subtle grain */}
+      <div
+        className="pointer-events-none fixed inset-0 z-0 opacity-[0.04] mix-blend-multiply"
+        style={{
+          backgroundImage:
+            "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' /></filter><rect width='100%25' height='100%25' filter='url(%23n)' /></svg>\")",
+        }}
+      />
+      {/* Radial vignette to focus attention on center */}
+      <div
+        className="pointer-events-none fixed inset-0 z-0"
+        style={{
+          background:
+            "radial-gradient(ellipse at center, transparent 0%, transparent 40%, rgba(255,255,255,0.7) 80%, rgba(255,255,255,0.95) 100%)",
+        }}
+      />
+    </>
+  );
+}
+
+// ── Voice Orb ────────────────────────────────────────────────────────────────
 
 function VoiceOrb({
   status,
@@ -56,18 +105,6 @@ function VoiceOrb({
   const connecting = status === "connecting";
   const active = status === "connected";
 
-  // Determine ring animation
-  let ringClass = "scale-100 opacity-0";
-  if (connecting) ringClass = "scale-110 opacity-30 animate-pulse";
-  else if (isSpeaking) ringClass = "scale-[1.35] opacity-40";
-  else if (isListening) ringClass = "scale-[1.2] opacity-20";
-
-  // Determine orb color
-  let orbBg = "bg-stone-900";
-  if (connecting) orbBg = "bg-stone-700";
-  else if (isSpeaking) orbBg = "bg-coral";
-  else if (isListening) orbBg = "bg-stone-900";
-
   return (
     <button
       type="button"
@@ -75,60 +112,135 @@ function VoiceOrb({
       disabled={disabled}
       className="relative flex items-center justify-center disabled:cursor-not-allowed"
     >
-      {/* Outer pulse ring */}
-      <div
-        className={`absolute h-32 w-32 rounded-full bg-coral/50 transition-all duration-700 ease-out ${ringClass}`}
+      {/* Outer radiating ring 3 */}
+      <motion.div
+        className="absolute h-48 w-48 rounded-full border border-black/10"
+        animate={
+          active
+            ? { scale: [1, 1.3, 1], opacity: [0.4, 0, 0.4] }
+            : { scale: 1, opacity: 0 }
+        }
+        transition={{ duration: 3, repeat: Infinity, ease: "easeOut" }}
       />
-      {/* Inner ring */}
-      {active && (
-        <div
-          className={`absolute h-28 w-28 rounded-full border border-coral/20 transition-all duration-500 ${
-            isSpeaking ? "scale-[1.15] opacity-100" : "scale-100 opacity-40"
-          }`}
-        />
-      )}
-      {/* Orb */}
-      <div
-        className={`relative z-10 flex h-24 w-24 items-center justify-center rounded-full ${orbBg} shadow-xl transition-all duration-500 ${
-          active ? "shadow-coral/20" : "shadow-stone-900/10"
-        } ${idle ? "hover:scale-105 hover:shadow-2xl" : ""}`}
+      {/* Outer radiating ring 2 */}
+      <motion.div
+        className="absolute h-40 w-40 rounded-full border border-black/15"
+        animate={
+          active
+            ? { scale: [1, 1.25, 1], opacity: [0.5, 0, 0.5] }
+            : { scale: 1, opacity: 0 }
+        }
+        transition={{
+          duration: 3,
+          delay: 0.5,
+          repeat: Infinity,
+          ease: "easeOut",
+        }}
+      />
+      {/* Outer radiating ring 1 */}
+      <motion.div
+        className="absolute h-32 w-32 rounded-full border border-black/20"
+        animate={
+          active
+            ? { scale: [1, 1.2, 1], opacity: [0.6, 0, 0.6] }
+            : connecting
+              ? { scale: [1, 1.15, 1], opacity: [0.3, 0.15, 0.3] }
+              : { scale: 1, opacity: 0 }
+        }
+        transition={{
+          duration: connecting ? 1.5 : 3,
+          delay: 1,
+          repeat: Infinity,
+          ease: "easeOut",
+        }}
+      />
+
+      {/* Speaking halo */}
+      <motion.div
+        className="absolute h-28 w-28 rounded-full bg-black/5"
+        animate={
+          isSpeaking
+            ? { scale: [1, 1.15, 1] }
+            : isListening
+              ? { scale: [1, 1.05, 1] }
+              : { scale: 1 }
+        }
+        transition={{
+          duration: isSpeaking ? 0.8 : 1.4,
+          repeat: isSpeaking || isListening ? Infinity : 0,
+          ease: "easeInOut",
+        }}
+      />
+
+      {/* Main orb */}
+      <motion.div
+        className="relative z-10 flex h-24 w-24 items-center justify-center rounded-full bg-black shadow-[0_16px_48px_rgba(0,0,0,0.25)]"
+        whileHover={idle ? { scale: 1.05 } : {}}
+        whileTap={idle ? { scale: 0.96 } : {}}
+        animate={
+          isSpeaking
+            ? { scale: [1, 1.08, 1] }
+            : { scale: 1 }
+        }
+        transition={
+          isSpeaking
+            ? { duration: 0.6, repeat: Infinity, ease: "easeInOut" }
+            : { duration: 0.3 }
+        }
       >
         {idle && (
-          <svg className="h-8 w-8 text-white ml-1" viewBox="0 0 24 24" fill="currentColor">
+          <svg
+            className="ml-1 h-8 w-8 text-white"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+          >
             <path d="M8 5v14l11-7z" />
           </svg>
         )}
         {connecting && (
-          <div className="h-5 w-5 rounded-full border-2 border-white border-t-transparent animate-spin" />
+          <motion.div
+            className="h-5 w-5 rounded-full border-2 border-white border-t-transparent"
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          />
         )}
         {active && (
-          <div className="flex items-center gap-1">
-            {[0, 1, 2].map((i) => (
-              <div
+          <div className="flex items-end gap-1">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <motion.span
                 key={i}
-                className={`w-1 rounded-full bg-white transition-all duration-300 ${
+                className="w-1 rounded-full bg-white"
+                animate={
                   isSpeaking
-                    ? "animate-pulse"
-                    : ""
-                }`}
-                style={{
-                  height: isSpeaking ? `${14 + Math.sin(i * 2) * 8}px` : "8px",
-                  animationDelay: `${i * 150}ms`,
+                    ? { scaleY: [0.4, 1.2, 0.6, 1, 0.4] }
+                    : isListening
+                      ? { scaleY: [0.3, 0.6, 0.4, 0.5, 0.3] }
+                      : { scaleY: 0.3 }
+                }
+                transition={{
+                  duration: isSpeaking ? 0.7 : 1.4,
+                  repeat: Infinity,
+                  delay: i * 0.08,
+                  ease: "easeInOut",
                 }}
+                style={{ height: "20px", transformOrigin: "bottom" }}
               />
             ))}
           </div>
         )}
-      </div>
+      </motion.div>
     </button>
   );
 }
 
-// ── Creator Canvas ──────────────────────────────────────────────────────────
+// ── Creator Canvas ───────────────────────────────────────────────────────────
 
 function CreatorCanvas() {
   const [draft, setDraft] = useState<FormDraft>(emptyDraft);
-  const [created, setCreated] = useState<{ slug: string; title: string } | null>(null);
+  const [created, setCreated] = useState<{
+    slug: string;
+    title: string;
+  } | null>(null);
   const [starting, setStarting] = useState(false);
   const [saving, setSaving] = useState(false);
   const draftRef = useRef<FormDraft>(emptyDraft());
@@ -137,7 +249,6 @@ function CreatorCanvas() {
 
   const fieldCount = useMemo(() => draft.fields.length, [draft.fields]);
 
-  // Auto-scroll transcript
   useEffect(() => {
     transcriptEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [transcript]);
@@ -146,19 +257,31 @@ function CreatorCanvas() {
     onConnect: ({ conversationId }) => {
       setTranscript((t) => [
         ...t,
-        { id: `connected-${conversationId}`, role: "system", text: "Connected." },
+        {
+          id: `connected-${conversationId}`,
+          role: "system",
+          text: "Connected.",
+        },
       ]);
     },
     onDisconnect: () => {
       setTranscript((t) => [
         ...t,
-        { id: `disconnected-${Date.now()}`, role: "system", text: "Session ended." },
+        {
+          id: `disconnected-${Date.now()}`,
+          role: "system",
+          text: "Session ended.",
+        },
       ]);
     },
     onError: (message) => {
       setTranscript((t) => [
         ...t,
-        { id: `error-${Date.now()}`, role: "system", text: `Error: ${message}` },
+        {
+          id: `error-${Date.now()}`,
+          role: "system",
+          text: `Error: ${message}`,
+        },
       ]);
     },
     onMessage: (event) => {
@@ -212,10 +335,23 @@ function CreatorCanvas() {
     const label = (params.label ?? "").trim();
     if (!label) return "No label provided — question not added.";
 
-    const type: FieldType = VALID_TYPES.has(params.type ?? "") ? (params.type as FieldType) : "text";
-    const id = (params.id ?? label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "")).slice(0, 32);
+    const type: FieldType = VALID_TYPES.has(params.type ?? "")
+      ? (params.type as FieldType)
+      : "text";
+    const id = (
+      params.id ??
+      label
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "_")
+        .replace(/^_|_$/g, "")
+    ).slice(0, 32);
 
-    const field: FormField = { id, label, type, required: params.required !== false };
+    const field: FormField = {
+      id,
+      label,
+      type,
+      required: params.required !== false,
+    };
 
     if (params.options?.length && (type === "enum" || type === "multi_select")) {
       field.options = params.options;
@@ -226,7 +362,7 @@ function CreatorCanvas() {
     }
 
     updateFields((prev) => [...prev, field]);
-    return `Done. ${draftRef.current.fields.length} questions so far.`;
+    return "Done.";
   };
 
   const updateQuestion = (params: {
@@ -238,13 +374,15 @@ function CreatorCanvas() {
     description?: string;
   }) => {
     const idx = params.index ?? -1;
-    if (idx < 0 || idx >= draftRef.current.fields.length) return "Invalid question index.";
+    if (idx < 0 || idx >= draftRef.current.fields.length)
+      return "Invalid question index.";
     updateFields((prev) =>
       prev.map((f, i) => {
         if (i !== idx) return f;
         const updated = { ...f };
         if (params.label) updated.label = params.label;
-        if (params.type && VALID_TYPES.has(params.type)) updated.type = params.type as FieldType;
+        if (params.type && VALID_TYPES.has(params.type))
+          updated.type = params.type as FieldType;
         if (params.required !== undefined) updated.required = params.required;
         if (params.options) updated.options = params.options;
         if (params.description) updated.description = params.description;
@@ -256,12 +394,16 @@ function CreatorCanvas() {
 
   const removeQuestion = (params: { index?: number }) => {
     const idx = params.index ?? -1;
-    if (idx < 0 || idx >= draftRef.current.fields.length) return "Invalid question index.";
+    if (idx < 0 || idx >= draftRef.current.fields.length)
+      return "Invalid question index.";
     updateFields((prev) => prev.filter((_, i) => i !== idx));
     return "Done.";
   };
 
-  const setVoiceConfig = (params: { greeting?: string; personality?: string }) => {
+  const setVoiceConfig = (params: {
+    greeting?: string;
+    personality?: string;
+  }) => {
     const patch: Partial<FormDraft> = {};
     if (params.greeting) patch.greeting = params.greeting.trim();
     if (params.personality) patch.personality = params.personality.trim();
@@ -290,7 +432,11 @@ function CreatorCanvas() {
         console.error("Failed to create form:", err);
         setTranscript((t) => [
           ...t,
-          { id: `create-error-${Date.now()}`, role: "system", text: "Failed to create form. Please try again." },
+          {
+            id: `create-error-${Date.now()}`,
+            role: "system",
+            text: "Failed to create form. Please try again.",
+          },
         ]);
       })
       .finally(() => setSaving(false));
@@ -335,33 +481,57 @@ function CreatorCanvas() {
     }
   };
 
-  // ── Success → redirect to form detail ─────────────────────────────────────
+  // ── Success screen ────────────────────────────────────────────────────────
 
   if (created) {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center bg-cream px-6 text-center">
-        <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-coral/10">
-          <svg className="h-7 w-7 text-coral" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-          </svg>
-        </div>
-        <h1 className="font-display text-4xl font-semibold tracking-tight">
-          {created.title}
-        </h1>
-        <p className="mt-2 text-stone-500">Your form is live.</p>
-        <div className="mt-8 flex gap-3">
-          <Link
-            to={`/f/${created.slug}`}
-            className="rounded-full bg-coral px-6 py-2.5 text-sm font-medium text-white transition hover:bg-coral-dark"
+      <main className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-white px-8 text-center text-black font-body">
+        <DottedCanvas />
+        <div className="relative flex max-w-3xl flex-col items-center gap-6">
+          <motion.p
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-[11px] uppercase tracking-[0.32em] text-black/50"
           >
-            Try it
-          </Link>
-          <Link
-            to="/dashboard"
-            className="rounded-full border border-stone-200 px-6 py-2.5 text-sm font-medium text-stone-700 transition hover:bg-stone-50"
+            § Form created
+          </motion.p>
+          <motion.h1
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+            className="font-display text-6xl font-semibold leading-[0.9] tracking-tight md:text-8xl"
           >
-            Dashboard
-          </Link>
+            {created.title}
+            <em className="italic">.</em>
+          </motion.h1>
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.25 }}
+            className="max-w-md text-base leading-7 text-black/60"
+          >
+            Your form is live. Share the link or try it yourself.
+          </motion.p>
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="mt-6 flex flex-wrap justify-center gap-3"
+          >
+            <Link
+              to={`/f/${created.slug}`}
+              className="group inline-flex items-center gap-2 rounded-full bg-black px-7 py-4 text-sm font-medium text-white transition hover:-translate-y-0.5"
+            >
+              Try the form
+              <span className="transition group-hover:translate-x-0.5">→</span>
+            </Link>
+            <Link
+              to="/dashboard"
+              className="rounded-full border border-black/20 px-7 py-4 text-sm font-medium text-black transition hover:border-black"
+            >
+              Dashboard
+            </Link>
+          </motion.div>
         </div>
       </main>
     );
@@ -371,94 +541,277 @@ function CreatorCanvas() {
 
   const isConnected = conversation.status === "connected";
   const isIdle = conversation.status === "disconnected" && transcript.length === 0;
+  const agentMessages = transcript.filter((e) => e.role === "agent");
+  const lastAgentMessage = agentMessages[agentMessages.length - 1];
+
+  const statusLabel = saving
+    ? "Creating"
+    : starting
+      ? "Connecting"
+      : isConnected
+        ? conversation.isSpeaking
+          ? "Speaking"
+          : conversation.isListening
+            ? "Listening"
+            : "Live"
+        : isIdle
+          ? "Tap to start"
+          : "Done";
 
   return (
-    <main className="flex min-h-screen flex-col bg-cream">
-      {/* Top bar */}
-      <header className="flex items-center justify-between px-6 py-4">
+    <main className="relative min-h-screen overflow-hidden bg-white text-black font-body">
+      <DottedCanvas />
+
+      {/* Nav */}
+      <motion.nav
+        initial={{ y: -40, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+        className="relative z-20 flex items-center justify-between px-8 py-5"
+      >
         <Link
           to="/dashboard"
-          className="text-sm text-stone-400 transition hover:text-stone-900"
+          className="group flex items-center gap-2 text-sm text-black/60 transition hover:text-black"
         >
-          &larr; Back
+          <span className="transition group-hover:-translate-x-0.5">←</span>
+          Back
         </Link>
-        {fieldCount > 0 && (
-          <span className="text-xs text-stone-400">
-            {fieldCount} question{fieldCount !== 1 ? "s" : ""}
-            {draft.title ? ` · ${draft.title}` : ""}
+        <div className="flex items-center gap-2.5">
+          <motion.span
+            className="inline-block h-2 w-2 rounded-full bg-black"
+            animate={{ scale: [1, 1.4, 1] }}
+            transition={{ duration: 1.8, repeat: Infinity }}
+          />
+          <span className="font-display text-2xl font-semibold tracking-tight">
+            sayso
           </span>
-        )}
-      </header>
-
-      {/* Center content */}
-      <div className="flex flex-1 flex-col items-center justify-center px-6">
-        {/* Pre-start state */}
-        {isIdle && (
-          <p className="mb-16 max-w-xs text-center text-lg leading-relaxed text-stone-400">
-            Describe your form and we'll build it together.
-          </p>
-        )}
-
-        {/* Orb */}
-        <VoiceOrb
-          status={conversation.status}
-          isSpeaking={conversation.isSpeaking}
-          isListening={conversation.isListening}
-          onClick={handleOrbClick}
-          disabled={starting || saving}
-        />
-
-        {/* Status label */}
-        <p className="mt-10 text-xs uppercase tracking-[0.3em] text-stone-400">
-          {saving
-            ? "Creating..."
-            : starting
-              ? "Connecting..."
-              : isConnected
-                ? conversation.isSpeaking
-                  ? "Speaking"
-                  : "Listening"
-                : isIdle
-                  ? "Tap to start"
-                  : "Done"}
-        </p>
-
-        {/* Transcript */}
-        {transcript.length > 0 && (
-          <div className="mt-10 w-full max-w-lg">
-            <div className="max-h-[40vh] space-y-3 overflow-y-auto px-2">
-              {transcript
-                .filter((e) => e.role !== "system")
-                .map((entry) => (
-                  <div
-                    key={entry.id}
-                    className={`${
-                      entry.role === "agent"
-                        ? "text-stone-900"
-                        : "text-stone-400"
-                    }`}
-                  >
-                    <p className="text-sm leading-relaxed">{entry.text}</p>
-                  </div>
-                ))}
-              <div ref={transcriptEndRef} />
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Bottom — end session button when connected */}
-      {isConnected && (
-        <div className="flex justify-center px-6 pb-8">
-          <button
-            type="button"
-            onClick={() => conversation.endSession()}
-            className="rounded-full border border-stone-200 px-5 py-2 text-sm text-stone-500 transition hover:border-stone-400 hover:text-stone-700"
-          >
-            End session
-          </button>
         </div>
-      )}
+        <div className="min-w-[60px] text-right text-[10px] uppercase tracking-[0.28em] text-black/50">
+          {fieldCount > 0 ? (
+            <span>
+              {String(fieldCount).padStart(2, "0")}{" "}
+              question{fieldCount !== 1 ? "s" : ""}
+            </span>
+          ) : (
+            <span className="opacity-0">—</span>
+          )}
+        </div>
+      </motion.nav>
+
+      {/* Main layout */}
+      <section className="relative z-10 grid min-h-[calc(100vh-5rem)] lg:grid-cols-[1fr_auto_1fr]">
+        {/* Left: live agent transcript */}
+        <div className="hidden flex-col justify-center px-8 lg:flex">
+          <AnimatePresence mode="wait">
+            {lastAgentMessage ? (
+              <motion.div
+                key={lastAgentMessage.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+                className="max-w-sm"
+              >
+                <p className="mb-3 text-[10px] uppercase tracking-[0.28em] text-black/40">
+                  § The agent
+                </p>
+                <p className="font-display text-2xl leading-[1.2] text-black">
+                  "{lastAgentMessage.text}"
+                </p>
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
+        </div>
+
+        {/* Center: editorial heading + orb */}
+        <div className="flex flex-col items-center justify-center px-8 py-16">
+          {/* Eyebrow */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3, duration: 0.8 }}
+            className="flex items-center gap-4"
+          >
+            <div className="h-px w-16 bg-black/20" />
+            <span className="text-[11px] uppercase tracking-[0.32em] text-black/60">
+              § 01 — Create a form
+            </span>
+            <div className="h-px w-16 bg-black/20" />
+          </motion.div>
+
+          {/* Editorial headline */}
+          <div className="mt-10">
+            <h1 className="text-center font-display text-6xl font-semibold leading-[0.9] tracking-[-0.03em] md:text-7xl lg:text-8xl">
+              <div className="overflow-hidden">
+                <motion.div
+                  initial={{ y: "110%" }}
+                  animate={{ y: "0%" }}
+                  transition={{
+                    duration: 1,
+                    ease: [0.22, 1, 0.36, 1],
+                    delay: 0.4,
+                  }}
+                >
+                  Describe your form.
+                </motion.div>
+              </div>
+              <div className="overflow-hidden">
+                <motion.em
+                  initial={{ y: "110%", opacity: 0 }}
+                  animate={{ y: "0%", opacity: 1 }}
+                  transition={{
+                    duration: 1,
+                    ease: [0.22, 1, 0.36, 1],
+                    delay: 0.55,
+                  }}
+                  className="block italic text-black/60"
+                >
+                  We'll build it together.
+                </motion.em>
+              </div>
+            </h1>
+          </div>
+
+          {/* Orb */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.9, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+            className="mt-24"
+          >
+            <VoiceOrb
+              status={conversation.status}
+              isSpeaking={conversation.isSpeaking}
+              isListening={conversation.isListening}
+              onClick={handleOrbClick}
+              disabled={starting || saving}
+            />
+          </motion.div>
+
+          {/* Status label */}
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1.1, duration: 0.6 }}
+            className="mt-10 flex items-center gap-3 text-[11px] uppercase tracking-[0.32em] text-black/60"
+          >
+            <span
+              className={`inline-block h-1.5 w-1.5 rounded-full ${
+                isConnected ? "bg-black" : "bg-black/30"
+              }`}
+            />
+            {statusLabel}
+          </motion.p>
+
+          {/* End session button */}
+          <AnimatePresence>
+            {isConnected && (
+              <motion.button
+                type="button"
+                onClick={() => conversation.endSession()}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 10 }}
+                className="mt-10 rounded-full border border-black/20 px-6 py-3 text-sm font-medium text-black transition hover:border-black"
+              >
+                End session
+              </motion.button>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Right: live draft panel */}
+        <div className="hidden flex-col justify-center px-8 lg:flex">
+          <AnimatePresence mode="wait">
+            {draft.title || draft.fields.length > 0 ? (
+              <motion.div
+                key="draft"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+                className="max-w-sm"
+              >
+                <p className="mb-3 text-[10px] uppercase tracking-[0.28em] text-black/40">
+                  § Draft
+                </p>
+                {draft.title && (
+                  <motion.h2
+                    key={draft.title}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="font-display text-3xl font-semibold leading-[1] tracking-tight"
+                  >
+                    {draft.title}
+                  </motion.h2>
+                )}
+                {draft.fields.length > 0 && (
+                  <ol className="mt-6 divide-y divide-black/10 border-y border-black/10">
+                    <AnimatePresence initial={false}>
+                      {draft.fields.map((field, i) => (
+                        <motion.li
+                          key={field.id}
+                          initial={{ opacity: 0, x: 10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0, x: -10 }}
+                          transition={{
+                            duration: 0.5,
+                            ease: [0.22, 1, 0.36, 1],
+                          }}
+                          className="flex items-start gap-4 py-4"
+                        >
+                          <span className="mt-0.5 font-display text-xs text-black/40">
+                            {String(i + 1).padStart(2, "0")}
+                          </span>
+                          <div className="flex-1">
+                            <p className="font-display text-base leading-6 text-black">
+                              {field.label}
+                            </p>
+                            <p className="mt-1 text-[9px] uppercase tracking-[0.28em] text-black/40">
+                              {field.type}
+                              {field.required ? " · Required" : ""}
+                            </p>
+                          </div>
+                        </motion.li>
+                      ))}
+                    </AnimatePresence>
+                  </ol>
+                )}
+                {draft.greeting && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="mt-6"
+                  >
+                    <p className="text-[9px] uppercase tracking-[0.28em] text-black/40">
+                      Greeting
+                    </p>
+                    <p className="mt-2 font-display text-sm italic leading-6 text-black/70">
+                      "{draft.greeting}"
+                    </p>
+                  </motion.div>
+                )}
+              </motion.div>
+            ) : isConnected ? (
+              <motion.p
+                key="empty"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="max-w-xs text-[11px] uppercase tracking-[0.28em] text-black/40"
+              >
+                § The draft will appear here as you describe it.
+              </motion.p>
+            ) : null}
+          </AnimatePresence>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <div className="relative z-10 mx-auto flex max-w-[1600px] items-center justify-between px-8 py-6 text-[10px] uppercase tracking-[0.28em] text-black/40">
+        <span>Powered by ElevenLabs</span>
+        <span className="hidden md:block">The voice is the form</span>
+      </div>
     </main>
   );
 }
