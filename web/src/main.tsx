@@ -16,6 +16,7 @@ import { Dashboard } from "./pages/Dashboard";
 import { FormEditor } from "./pages/FormEditor";
 import { FormDetail } from "./pages/FormDetail";
 import { VoiceFormCreator } from "./pages/VoiceFormCreator";
+import { AgentSelect } from "./pages/AgentSelect";
 import "./index.css";
 
 const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
@@ -82,6 +83,14 @@ createRoot(document.getElementById("root")!).render(
             />
             <Route
               path="dashboard/new/voice"
+              element={
+                <ProtectedRoute>
+                  <AgentSelect />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="dashboard/new/voice/create"
               element={
                 <ProtectedRoute>
                   <VoiceFormCreator />
