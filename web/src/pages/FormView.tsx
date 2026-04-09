@@ -5,6 +5,7 @@ import {
   useConversation,
   useConversationClientTool,
 } from "@elevenlabs/react";
+import { motion, AnimatePresence } from "framer-motion";
 import { getSignedUrl } from "@/lib/elevenlabs";
 import { fetchForm, submitResponse, FormNotFoundError } from "@/lib/api";
 import { buildAgentPrompt } from "@/lib/prompt";
@@ -36,63 +37,160 @@ function createInitialAnswers(form: Form) {
   return Object.fromEntries(form.fields.map((f) => [f.id, ""]));
 }
 
-// ── Loading / Error / Not Found states ───────────────────────────────────────
+// ── Shared shell ─────────────────────────────────────────────────────────────
 
-function Shell({ children }: { children: React.ReactNode }) {
+function Grain() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-4 bg-cream px-6 text-center">
-      {children}
+    <div
+      className="pointer-events-none fixed inset-0 z-0 opacity-[0.04] mix-blend-multiply"
+      style={{
+        backgroundImage:
+          "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' /></filter><rect width='100%25' height='100%25' filter='url(%23n)' /></svg>\")",
+      }}
+    />
+  );
+}
+
+function StatusShell({
+  kicker,
+  title,
+  body,
+  children,
+}: {
+  kicker: string;
+  title: React.ReactNode;
+  body?: string;
+  children?: React.ReactNode;
+}) {
+  return (
+    <main className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-white px-8 text-center text-black font-body">
+      <Grain />
+      <div className="relative flex max-w-2xl flex-col items-center gap-6">
+        <motion.p
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-[11px] uppercase tracking-[0.32em] text-black/50"
+        >
+          {kicker}
+        </motion.p>
+        <motion.h1
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+          className="font-display text-6xl font-semibold leading-[0.9] tracking-tight md:text-8xl"
+        >
+          {title}
+        </motion.h1>
+        {body && (
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.25 }}
+            className="max-w-md text-base leading-7 text-black/60"
+          >
+            {body}
+          </motion.p>
+        )}
+        {children}
+      </div>
     </main>
   );
 }
 
 function FormLoading() {
   return (
-    <Shell>
-      <div className="h-8 w-8 animate-spin rounded-full border-2 border-coral border-t-transparent" />
-      <p className="text-sm text-stone-500">Loading form...</p>
-    </Shell>
+    <StatusShell
+      kicker="§ Loading"
+      title={
+        <>
+          Tuning the <em className="italic">mic</em>…
+        </>
+      }
+    >
+      <motion.div
+        animate={{ rotate: 360 }}
+        transition={{ duration: 1.2, repeat: Infinity, ease: "linear" }}
+        className="mt-2 h-6 w-6 rounded-full border-2 border-black/20 border-t-black"
+      />
+    </StatusShell>
   );
 }
 
 function FormError({ message }: { message: string }) {
   return (
-    <Shell>
-      <p className="text-sm uppercase tracking-[0.3em] text-stone-400">Error</p>
-      <h1 className="font-display text-4xl font-semibold tracking-tight">
-        Something went wrong
-      </h1>
-      <p className="max-w-md text-stone-600">{message}</p>
+    <StatusShell
+      kicker="§ Error"
+      title={
+        <>
+          Something went <em className="italic">wrong</em>.
+        </>
+      }
+      body={message}
+    >
       <Link
         to="/"
-        className="rounded-full bg-coral px-6 py-3 text-sm font-medium text-white"
+        className="mt-4 rounded-full bg-black px-7 py-4 text-sm font-medium text-white transition hover:-translate-y-0.5"
       >
-        Back to home
+        ← Back to sayso
       </Link>
-    </Shell>
+    </StatusShell>
   );
 }
 
 function FormNotFound() {
   return (
-    <Shell>
-      <p className="text-sm uppercase tracking-[0.3em] text-stone-400">
-        Not found
-      </p>
-      <h1 className="font-display text-5xl font-semibold tracking-tight">
-        This form doesn't exist.
-      </h1>
+    <StatusShell
+      kicker="§ 404 — Not found"
+      title={
+        <>
+          This form doesn't <em className="italic">exist</em>.
+        </>
+      }
+    >
       <Link
         to="/"
-        className="rounded-full bg-coral px-6 py-3 text-sm font-medium text-white"
+        className="mt-4 rounded-full bg-black px-7 py-4 text-sm font-medium text-white transition hover:-translate-y-0.5"
       >
-        Back to home
+        ← Back to sayso
       </Link>
-    </Shell>
+    </StatusShell>
   );
 }
 
-// ── Thank You screen ─────────────────────────────────────────────────────────
+// ── Waveform ─────────────────────────────────────────────────────────────────
+
+function Waveform({
+  active,
+  bars = 32,
+  className = "",
+}: {
+  active: boolean;
+  bars?: number;
+  className?: string;
+}) {
+  return (
+    <div className={`flex h-12 items-end gap-1 ${className}`}>
+      {Array.from({ length: bars }).map((_, i) => (
+        <motion.span
+          key={i}
+          className="w-1 rounded-full bg-current"
+          animate={
+            active ? { scaleY: [0.3, 1, 0.5, 0.9, 0.3] } : { scaleY: 0.2 }
+          }
+          transition={{
+            duration: 1.4,
+            repeat: active ? Infinity : 0,
+            delay: i * 0.04,
+            ease: "easeInOut",
+          }}
+          style={{ height: "100%", transformOrigin: "bottom" }}
+        />
+      ))}
+    </div>
+  );
+}
+
+// ── Thank you ────────────────────────────────────────────────────────────────
 
 function ThankYou({
   form,
@@ -104,62 +202,141 @@ function ThankYou({
   const answeredFields = form.fields.filter((f) => answers[f.id]);
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-cream text-stone-900">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,107,90,0.2),transparent_40%)]" />
+    <main className="relative min-h-screen overflow-hidden bg-white text-black font-body">
+      <Grain />
 
-      <section className="relative mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center px-6 py-16 text-center">
-        <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-coral/10">
-          <svg
-            className="h-8 w-8 text-coral"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M5 13l4 4L19 7"
+      {/* Nav */}
+      <nav className="sticky top-0 z-50 border-b border-black/10 bg-white/80 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-[1600px] items-center justify-between px-8 py-5">
+          <Link to="/" className="flex items-center gap-2.5">
+            <motion.span
+              className="inline-block h-2 w-2 rounded-full bg-black"
+              animate={{ scale: [1, 1.4, 1] }}
+              transition={{ duration: 1.8, repeat: Infinity }}
             />
-          </svg>
+            <span className="font-display text-2xl font-semibold tracking-tight">
+              sayso
+            </span>
+          </Link>
+          <span className="text-[10px] uppercase tracking-[0.28em] text-black/50">
+            ● Complete
+          </span>
+          <Link
+            to="/"
+            className="rounded-full border border-black/20 px-5 py-2.5 text-sm font-medium text-black transition hover:border-black"
+          >
+            Done
+          </Link>
+        </div>
+      </nav>
+
+      {/* Hero */}
+      <section className="relative mx-auto max-w-[1600px] px-8 pt-24 pb-16">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.1 }}
+          className="flex items-center gap-4"
+        >
+          <div className="h-px flex-1 bg-black/20" />
+          <span className="text-[11px] uppercase tracking-[0.32em] text-black/60">
+            § Complete · {answeredFields.length} of {form.fields.length} answered
+          </span>
+          <div className="h-px flex-1 bg-black/20" />
+        </motion.div>
+
+        <div className="mt-20">
+          <h1 className="font-display text-[16vw] font-semibold leading-[0.85] tracking-[-0.04em] md:text-[12vw] lg:text-[11rem]">
+            <div className="overflow-hidden">
+              <motion.div
+                initial={{ y: "110%" }}
+                animate={{ y: "0%" }}
+                transition={{ duration: 1, ease: [0.22, 1, 0.36, 1], delay: 0.2 }}
+              >
+                Thank
+              </motion.div>
+            </div>
+            <div className="overflow-hidden">
+              <motion.em
+                initial={{ y: "110%", opacity: 0 }}
+                animate={{ y: "0%", opacity: 1 }}
+                transition={{ duration: 1, ease: [0.22, 1, 0.36, 1], delay: 0.35 }}
+                className="block italic"
+              >
+                you.
+              </motion.em>
+            </div>
+          </h1>
         </div>
 
-        <p className="text-sm uppercase tracking-[0.3em] text-coral-dark">
-          Complete
-        </p>
-        <h1 className="mt-3 font-display text-5xl font-semibold tracking-tight md:text-6xl">
-          Thank you
-        </h1>
-        <p className="mt-4 max-w-md text-lg text-stone-600">
-          Your responses have been recorded. A professional will review your
-          information.
-        </p>
+        <motion.p
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.8 }}
+          className="mt-16 max-w-xl font-display text-2xl leading-[1.25] md:text-3xl"
+        >
+          Your responses have been recorded.{" "}
+          <em className="italic text-black/60">
+            A professional will review your information.
+          </em>
+        </motion.p>
+      </section>
 
-        {answeredFields.length > 0 && (
-          <div className="mt-10 w-full rounded-[1.5rem] border border-stone-900/10 bg-white/70 p-6 text-left backdrop-blur">
-            <p className="text-xs uppercase tracking-[0.24em] text-stone-400">
-              Summary
-            </p>
-            <div className="mt-4 space-y-3">
-              {answeredFields.map((field) => (
-                <div key={field.id}>
-                  <p className="text-xs text-stone-400">{field.label}</p>
-                  <p className="mt-1 text-sm text-stone-800">
+      {/* Summary */}
+      {answeredFields.length > 0 && (
+        <section className="relative mx-auto max-w-[1600px] px-8 pb-24">
+          <div className="border-y border-black">
+            <div className="flex items-center justify-between border-b border-black/10 py-6">
+              <p className="text-[11px] uppercase tracking-[0.32em] text-black/50">
+                § Summary
+              </p>
+              <p className="text-[10px] uppercase tracking-[0.28em] text-black/40">
+                {form.title}
+              </p>
+            </div>
+            <div className="divide-y divide-black/10">
+              {answeredFields.map((field, i) => (
+                <motion.article
+                  key={field.id}
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{
+                    delay: 0.4 + i * 0.08,
+                    duration: 0.6,
+                    ease: [0.22, 1, 0.36, 1],
+                  }}
+                  className="grid gap-6 py-8 md:grid-cols-[auto_1fr_2fr] md:items-baseline md:gap-12"
+                >
+                  <p className="font-display text-sm text-black/40">
+                    {String(i + 1).padStart(2, "0")}
+                  </p>
+                  <p className="font-display text-lg leading-6 text-black/60">
+                    {field.label}
+                  </p>
+                  <p className="font-display text-xl leading-8 text-black">
                     {answers[field.id]}
                   </p>
-                </div>
+                </motion.article>
               ))}
             </div>
           </div>
-        )}
+        </section>
+      )}
 
-        <Link
-          to="/"
-          className="mt-8 rounded-full border border-stone-900/10 px-6 py-3 text-sm font-medium text-stone-700 transition hover:border-stone-900"
-        >
-          Done
-        </Link>
-      </section>
+      {/* Footer */}
+      <footer className="relative border-t border-black/10">
+        <div className="mx-auto flex max-w-[1600px] items-center justify-between px-8 py-8">
+          <p className="text-[10px] uppercase tracking-[0.28em] text-black/40">
+            Powered by ElevenLabs · The voice is the form
+          </p>
+          <Link
+            to="/"
+            className="text-[10px] uppercase tracking-[0.28em] text-black/60 transition hover:text-black"
+          >
+            ← sayso
+          </Link>
+        </div>
+      </footer>
     </main>
   );
 }
@@ -183,6 +360,7 @@ function VoiceFormCanvas({ form }: { form: Form }) {
       text: "Ready to start. Press the button to begin the voice conversation.",
     },
   ]);
+  const transcriptEndRef = useRef<HTMLDivElement>(null);
 
   const answeredCount = useMemo(
     () => Object.values(answers).filter(Boolean).length,
@@ -231,6 +409,10 @@ function VoiceFormCanvas({ form }: { form: Form }) {
       ]);
     },
   });
+
+  useEffect(() => {
+    transcriptEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [transcript]);
 
   // ── Client tools ──────────────────────────────────────────────────────────
 
@@ -313,202 +495,486 @@ function VoiceFormCanvas({ form }: { form: Form }) {
     }
   };
 
-  // ── Show thank you if completed ───────────────────────────────────────────
-
   if (completed) {
     return <ThankYou form={form} answers={answers} />;
   }
 
-  // ── Main UI ───────────────────────────────────────────────────────────────
+  const isConnected = conversation.status === "connected";
+  const isConnecting = starting || conversation.status === "connecting";
+  const titleWords = form.title.split(" ");
+  const headTitle =
+    titleWords.length > 1
+      ? titleWords.slice(0, -1).join(" ")
+      : form.title;
+  const headTail = titleWords.length > 1 ? titleWords[titleWords.length - 1] : "";
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-cream text-stone-900">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,107,90,0.2),transparent_40%),linear-gradient(135deg,rgba(255,255,255,0.4),transparent_55%)]" />
-      <div className="pointer-events-none absolute -left-24 top-10 h-64 w-64 rounded-full bg-coral/15 blur-3xl" />
-      <div className="pointer-events-none absolute bottom-0 right-0 h-80 w-80 rounded-full bg-stone-900/8 blur-3xl" />
+    <main className="relative min-h-screen overflow-hidden bg-white text-black font-body">
+      <Grain />
 
-      <section className="relative mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-8 px-6 py-8 lg:grid lg:grid-cols-[1.2fr_0.8fr]">
-        {/* Left column */}
-        <div className="flex flex-col justify-between rounded-[2rem] border border-stone-900/10 bg-white/70 p-6 shadow-[0_24px_80px_rgba(38,24,18,0.08)] backdrop-blur xl:p-8">
-          <div>
-            <div className="flex items-center justify-between">
-              <Link
-                to="/"
-                className="text-sm uppercase tracking-[0.24em] text-stone-500 transition hover:text-stone-900"
+      {/* Nav */}
+      <motion.nav
+        initial={{ y: -40, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+        className="sticky top-0 z-50 border-b border-black/10 bg-white/80 backdrop-blur-xl"
+      >
+        <div className="mx-auto flex max-w-[1600px] items-center justify-between px-8 py-5">
+          <Link to="/" className="flex items-center gap-2.5">
+            <motion.span
+              className="inline-block h-2 w-2 rounded-full bg-black"
+              animate={{ scale: [1, 1.4, 1] }}
+              transition={{ duration: 1.8, repeat: Infinity }}
+            />
+            <span className="font-display text-2xl font-semibold tracking-tight">
+              sayso
+            </span>
+          </Link>
+          <div className="hidden items-center gap-6 text-[10px] uppercase tracking-[0.28em] text-black/60 md:flex">
+            <span>Form · {form.slug}</span>
+            <span className="h-3 w-px bg-black/20" />
+            <span className="flex items-center gap-2">
+              <span
+                className={`h-1.5 w-1.5 rounded-full ${
+                  isConnected ? "bg-black" : "bg-black/30"
+                }`}
+              />
+              {formatStatus(conversation.status)}
+            </span>
+          </div>
+          <Link
+            to="/"
+            className="rounded-full border border-black/20 px-5 py-2.5 text-sm font-medium text-black transition hover:border-black"
+          >
+            ← Back
+          </Link>
+        </div>
+      </motion.nav>
+
+      {/* Editorial header */}
+      <section className="relative mx-auto max-w-[1600px] px-8 pt-20 pb-16">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2, duration: 0.8 }}
+          className="flex items-center gap-4"
+        >
+          <div className="h-px flex-1 bg-black/20" />
+          <span className="text-[11px] uppercase tracking-[0.32em] text-black/60">
+            § Voice intake · {form.fields.length} questions · Est. MMXXVI
+          </span>
+          <div className="h-px flex-1 bg-black/20" />
+        </motion.div>
+
+        <div className="mt-16">
+          <h1 className="font-display text-[14vw] font-semibold leading-[0.85] tracking-[-0.04em] text-black md:text-[11vw] lg:text-[9rem]">
+            <div className="overflow-hidden">
+              <motion.div
+                initial={{ y: "110%" }}
+                animate={{ y: "0%" }}
+                transition={{ duration: 1, ease: [0.22, 1, 0.36, 1], delay: 0.3 }}
               >
-                Sayso
-              </Link>
-              <span className="rounded-full border border-stone-900/10 px-4 py-2 text-xs uppercase tracking-[0.24em] text-stone-500">
-                {formatStatus(conversation.status)}
-              </span>
+                {headTitle}
+              </motion.div>
             </div>
-
-            <div className="mt-10 max-w-2xl">
-              <p className="text-sm uppercase tracking-[0.3em] text-coral-dark">
-                Voice form
-              </p>
-              <h1 className="mt-3 font-display text-5xl leading-none font-semibold tracking-tight md:text-7xl">
-                {form.title}
-              </h1>
-              {form.description && (
-                <p className="mt-5 max-w-xl text-lg leading-8 text-stone-600">
-                  {form.description}
-                </p>
-              )}
-            </div>
-
-            {/* Stats */}
-            <div className="mt-10 grid gap-4 md:grid-cols-3">
-              <div className="rounded-[1.5rem] border border-stone-900/10 bg-stone-900 px-5 py-6 text-cream">
-                <p className="text-xs uppercase tracking-[0.24em] text-cream/60">
-                  Progress
-                </p>
-                <p className="mt-3 text-4xl font-semibold">{progress}%</p>
+            {headTail && (
+              <div className="overflow-hidden">
+                <motion.em
+                  initial={{ y: "110%", opacity: 0 }}
+                  animate={{ y: "0%", opacity: 1 }}
+                  transition={{ duration: 1, ease: [0.22, 1, 0.36, 1], delay: 0.45 }}
+                  className="block italic"
+                >
+                  {headTail}.
+                </motion.em>
               </div>
-              <div className="rounded-[1.5rem] border border-stone-900/10 bg-white px-5 py-6">
-                <p className="text-xs uppercase tracking-[0.24em] text-stone-400">
-                  Captured
-                </p>
-                <p className="mt-3 text-4xl font-semibold">{answeredCount}</p>
-              </div>
-              <div className="rounded-[1.5rem] border border-stone-900/10 bg-white px-5 py-6">
-                <p className="text-xs uppercase tracking-[0.24em] text-stone-400">
-                  Mode
-                </p>
-                <p className="mt-3 text-2xl font-semibold capitalize">
-                  {conversation.mode}
-                </p>
-              </div>
-            </div>
+            )}
+          </h1>
+        </div>
 
-            {/* Controls */}
-            <div className="mt-8 flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                onClick={() => void handleStart()}
-                disabled={
-                  starting ||
-                  submitting ||
-                  conversation.status === "connecting" ||
-                  conversation.status === "connected"
-                }
-                className="rounded-full bg-coral px-6 py-3 text-sm font-medium text-white transition hover:bg-coral-dark disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {starting
-                  ? "Connecting..."
-                  : conversation.status === "connected"
-                    ? "Live now"
-                    : "Start voice form"}
-              </button>
-              <button
-                type="button"
-                onClick={() => void conversation.endSession()}
-                disabled={conversation.status !== "connected"}
-                className="rounded-full border border-stone-900/10 px-6 py-3 text-sm font-medium text-stone-700 transition hover:border-stone-900 hover:text-stone-900 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                End session
-              </button>
-              <button
-                type="button"
-                onClick={() => conversation.setMuted(!conversation.isMuted)}
-                className="rounded-full border border-stone-900/10 bg-white px-6 py-3 text-sm font-medium text-stone-700 transition hover:border-stone-900 hover:text-stone-900"
-              >
-                {conversation.isMuted ? "Unmute mic" : "Mute mic"}
-              </button>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.9, duration: 0.8 }}
+          className="mt-12 grid gap-10 md:grid-cols-[1fr_1.3fr_auto] md:items-end"
+        >
+          <p className="max-w-xs text-[11px] uppercase tracking-[0.28em] text-black/50">
+            § No typing. No fields. Just a conversation — you speak, Sayso
+            listens, the answers arrive structured.
+          </p>
+          <p className="max-w-xl font-display text-2xl leading-[1.25] text-black md:text-3xl">
+            {form.description || "A voice-first intake powered by ElevenLabs."}
+          </p>
+          <div className="text-right">
+            <p className="text-[10px] uppercase tracking-[0.28em] text-black/40">
+              Completion
+            </p>
+            <motion.p
+              key={progress}
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-1 font-display text-5xl font-semibold leading-none"
+            >
+              {progress}
+              <span className="text-2xl text-black/40">%</span>
+            </motion.p>
+          </div>
+        </motion.div>
+      </section>
+
+      {/* Main grid */}
+      <section className="relative mx-auto max-w-[1600px] px-8 pb-24">
+        <div className="grid gap-px border-y border-black bg-black lg:grid-cols-[1.3fr_1fr]">
+          {/* Left: Control + Transcript */}
+          <div className="flex flex-col bg-white">
+            <div className="border-b border-black/10 p-8 lg:p-12">
+              <div className="flex items-start justify-between gap-6">
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.32em] text-black/50">
+                    § 01 — The session
+                  </p>
+                  <h2 className="mt-4 font-display text-4xl font-semibold leading-[0.95] md:text-5xl">
+                    {isConnected ? (
+                      <>
+                        Live. <em className="italic">Just talk.</em>
+                      </>
+                    ) : submitting ? (
+                      <>
+                        Saving<em className="italic">…</em>
+                      </>
+                    ) : isConnecting ? (
+                      <>
+                        Connecting<em className="italic">…</em>
+                      </>
+                    ) : (
+                      <>
+                        Ready when <em className="italic">you</em> are.
+                      </>
+                    )}
+                  </h2>
+                </div>
+                <div className="hidden flex-col items-end gap-2 md:flex">
+                  <span className="text-[10px] uppercase tracking-[0.28em] text-black/40">
+                    Mode
+                  </span>
+                  <span className="font-display text-lg capitalize">
+                    {conversation.mode || "idle"}
+                  </span>
+                </div>
+              </div>
+
+              {/* Waveform bar */}
+              <div className="mt-10 flex items-center gap-6 border-y border-black/10 py-8">
+                <div className="flex items-center gap-3">
+                  <motion.span
+                    className={`h-2 w-2 rounded-full ${
+                      conversation.isListening ? "bg-black" : "bg-black/20"
+                    }`}
+                    animate={
+                      conversation.isListening ? { scale: [1, 1.6, 1] } : {}
+                    }
+                    transition={{ duration: 1.2, repeat: Infinity }}
+                  />
+                  <span className="text-[10px] uppercase tracking-[0.28em] text-black/50">
+                    {conversation.isListening
+                      ? "Listening"
+                      : conversation.isSpeaking
+                        ? "Speaking"
+                        : isConnected
+                          ? "Idle"
+                          : "Offline"}
+                  </span>
+                </div>
+                <Waveform
+                  active={conversation.isListening || conversation.isSpeaking}
+                  bars={48}
+                  className="h-12 flex-1 text-black"
+                />
+                <span className="text-[10px] uppercase tracking-[0.28em] text-black/40">
+                  {answeredCount}/{form.fields.length}
+                </span>
+              </div>
+
+              {/* Buttons */}
+              <div className="mt-10 flex flex-wrap items-center gap-3">
+                <motion.button
+                  type="button"
+                  onClick={() => void handleStart()}
+                  disabled={isConnecting || isConnected || submitting}
+                  whileHover={
+                    !isConnecting && !isConnected && !submitting
+                      ? { y: -2 }
+                      : {}
+                  }
+                  whileTap={{ scale: 0.98 }}
+                  className="group inline-flex items-center gap-3 rounded-full bg-black px-8 py-4 text-sm font-medium text-white transition disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <span className="relative flex h-2 w-2">
+                    {isConnected && (
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-70" />
+                    )}
+                    <span
+                      className={`relative inline-flex h-2 w-2 rounded-full ${
+                        isConnected ? "bg-white" : "bg-white/60"
+                      }`}
+                    />
+                  </span>
+                  {isConnecting
+                    ? "Connecting…"
+                    : isConnected
+                      ? "Live now"
+                      : submitting
+                        ? "Saving…"
+                        : "Start voice form"}
+                  <span className="transition group-hover:translate-x-0.5">
+                    →
+                  </span>
+                </motion.button>
+                <button
+                  type="button"
+                  onClick={() => void conversation.endSession()}
+                  disabled={!isConnected}
+                  className="rounded-full border border-black/20 px-6 py-4 text-sm font-medium text-black transition hover:border-black disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  End session
+                </button>
+                <button
+                  type="button"
+                  onClick={() => conversation.setMuted(!conversation.isMuted)}
+                  className="rounded-full border border-black/20 px-6 py-4 text-sm font-medium text-black transition hover:border-black"
+                >
+                  {conversation.isMuted ? "Unmute mic" : "Mute mic"}
+                </button>
+              </div>
             </div>
 
             {/* Transcript */}
-            <div className="mt-10 rounded-[1.75rem] border border-stone-900/10 bg-[#fffaf5] p-5">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.24em] text-stone-400">
-                    Live transcript
-                  </p>
-                  <p className="mt-2 text-sm text-stone-500">
-                    The voice is the form.
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  <span
-                    className={`h-3 w-3 rounded-full ${conversation.isListening ? "bg-coral" : "bg-stone-300"}`}
-                  />
-                  <span
-                    className={`h-3 w-3 rounded-full ${conversation.isSpeaking ? "bg-stone-900" : "bg-stone-300"}`}
-                  />
-                </div>
+            <div className="flex flex-1 flex-col p-8 lg:p-12">
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] uppercase tracking-[0.32em] text-black/50">
+                  § 02 — Live transcript
+                </p>
+                <p className="text-[10px] uppercase tracking-[0.28em] text-black/40">
+                  {transcript.length} entries
+                </p>
               </div>
 
-              <div className="mt-5 max-h-[22rem] space-y-3 overflow-y-auto pr-2">
-                {transcript.map((entry) => (
-                  <article
-                    key={entry.id}
-                    className={`rounded-[1.25rem] px-4 py-3 ${
-                      entry.role === "agent"
-                        ? "mr-8 bg-white"
-                        : entry.role === "user"
-                          ? "ml-8 bg-coral text-white"
-                          : "border border-dashed border-stone-900/10 bg-transparent text-stone-500"
-                    }`}
-                  >
-                    <p className="text-xs uppercase tracking-[0.2em] opacity-60">
-                      {entry.role}
-                    </p>
-                    <p className="mt-2 text-sm leading-6">{entry.text}</p>
-                  </article>
-                ))}
+              <div className="mt-6 max-h-[32rem] space-y-4 overflow-y-auto pr-2">
+                <AnimatePresence initial={false}>
+                  {transcript.map((entry) => (
+                    <motion.article
+                      key={entry.id}
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                      className={
+                        entry.role === "agent"
+                          ? "max-w-xl"
+                          : entry.role === "user"
+                            ? "ml-auto max-w-xl"
+                            : "max-w-full"
+                      }
+                    >
+                      {entry.role === "system" ? (
+                        <div className="flex items-center gap-3 border-l-2 border-black/30 py-1 pl-4">
+                          <span className="text-[9px] uppercase tracking-[0.28em] text-black/40">
+                            System
+                          </span>
+                          <p className="text-sm italic text-black/50">
+                            {entry.text}
+                          </p>
+                        </div>
+                      ) : (
+                        <div>
+                          <p
+                            className={`mb-2 text-[9px] uppercase tracking-[0.28em] ${
+                              entry.role === "user"
+                                ? "text-right text-black/60"
+                                : "text-black/50"
+                            }`}
+                          >
+                            {entry.role === "agent" ? "Agent" : "You"}
+                          </p>
+                          <div
+                            className={
+                              entry.role === "agent"
+                                ? "rounded-2xl rounded-tl-sm border border-black/10 bg-white px-5 py-4 shadow-[4px_4px_0_0_rgba(0,0,0,1)]"
+                                : "rounded-2xl rounded-tr-sm bg-black px-5 py-4 text-white"
+                            }
+                          >
+                            <p
+                              className={`leading-7 ${
+                                entry.role === "agent"
+                                  ? "font-display text-lg text-black"
+                                  : "text-base"
+                              }`}
+                            >
+                              {entry.text}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </motion.article>
+                  ))}
+                </AnimatePresence>
+                <div ref={transcriptEndRef} />
               </div>
             </div>
           </div>
+
+          {/* Right: Captured answers */}
+          <aside className="flex flex-col bg-black text-white">
+            <div className="border-b border-white/10 p-8 lg:p-10">
+              <p className="text-[10px] uppercase tracking-[0.32em] text-white/50">
+                § 03 — Captured
+              </p>
+              <h2 className="mt-4 font-display text-4xl font-semibold leading-[0.95] md:text-5xl">
+                Structured <em className="italic">output</em>.
+              </h2>
+              <p className="mt-5 max-w-md text-sm leading-7 text-white/60">
+                Every answer lands in a typed schema — not a transcript. The
+                agent calls client tools, we render the results live.
+              </p>
+            </div>
+
+            <div className="flex-1 divide-y divide-white/10">
+              {form.fields.map((field, index) => {
+                const value = answers[field.id];
+                const done = Boolean(value);
+                return (
+                  <motion.article
+                    key={field.id}
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{
+                      duration: 0.6,
+                      delay: 0.5 + index * 0.06,
+                      ease: [0.22, 1, 0.36, 1],
+                    }}
+                    className="relative px-8 py-6 lg:px-10"
+                  >
+                    <div className="flex items-start justify-between gap-6">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3">
+                          <p className="font-display text-xs text-white/40">
+                            {String(index + 1).padStart(2, "0")}
+                          </p>
+                          <span className="text-[9px] uppercase tracking-[0.28em] text-white/40">
+                            {field.type}
+                          </span>
+                          {field.required && (
+                            <span className="text-[9px] uppercase tracking-[0.28em] text-white/40">
+                              · Required
+                            </span>
+                          )}
+                        </div>
+                        <p className="mt-3 font-display text-lg leading-6 text-white">
+                          {field.label}
+                        </p>
+                        <AnimatePresence mode="wait">
+                          <motion.p
+                            key={value || "empty"}
+                            initial={{ opacity: 0, y: 6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -6 }}
+                            className={`mt-4 min-h-6 text-sm leading-7 ${
+                              done ? "text-white/80" : "italic text-white/30"
+                            }`}
+                          >
+                            {value || "Waiting for answer…"}
+                          </motion.p>
+                        </AnimatePresence>
+                      </div>
+                      <motion.span
+                        animate={done ? { scale: [1, 1.4, 1] } : {}}
+                        transition={{ duration: 0.5 }}
+                        className={`mt-2 inline-block h-2 w-2 flex-shrink-0 rounded-full ${
+                          done ? "bg-white" : "bg-white/20"
+                        }`}
+                      />
+                    </div>
+                  </motion.article>
+                );
+              })}
+            </div>
+
+            {/* Completion banner */}
+            <div className="border-t border-white/10 p-8 lg:p-10">
+              <AnimatePresence mode="wait">
+                {submitting ? (
+                  <motion.div
+                    key="saving"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="flex items-center gap-4"
+                  >
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{
+                        duration: 1.2,
+                        repeat: Infinity,
+                        ease: "linear",
+                      }}
+                      className="h-4 w-4 rounded-full border-2 border-white/20 border-t-white"
+                    />
+                    <span className="text-[10px] uppercase tracking-[0.28em] text-white/60">
+                      Saving responses…
+                    </span>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="waiting"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="flex items-center gap-4"
+                  >
+                    <div className="h-px flex-1 bg-white/20" />
+                    <span className="text-[10px] uppercase tracking-[0.28em] text-white/40">
+                      Saves when the agent finishes
+                    </span>
+                    <div className="h-px flex-1 bg-white/20" />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </aside>
         </div>
 
-        {/* Right column — captured answers */}
-        <aside className="rounded-[2rem] border border-stone-900/10 bg-stone-900 p-6 text-cream shadow-[0_24px_80px_rgba(38,24,18,0.15)] xl:p-8">
-          <p className="text-xs uppercase tracking-[0.24em] text-cream/50">
-            Structured output
-          </p>
-          <h2 className="mt-3 font-display text-3xl">Captured answers</h2>
-
-          <div className="mt-8 space-y-4">
-            {form.fields.map((field, index) => {
-              const value = answers[field.id];
-              return (
-                <article
-                  key={field.id}
-                  className="rounded-[1.5rem] border border-white/10 bg-white/5 p-5"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="text-xs uppercase tracking-[0.24em] text-cream/40">
-                        {String(index + 1).padStart(2, "0")}
-                      </p>
-                      <p className="mt-2 text-base leading-6 text-cream">
-                        {field.label}
-                      </p>
-                    </div>
-                    <span className="rounded-full border border-white/10 px-3 py-1 text-[10px] uppercase tracking-[0.24em] text-cream/40">
-                      {field.type}
-                    </span>
-                  </div>
-                  <p className="mt-4 min-h-12 text-sm leading-7 text-cream/70">
-                    {value || "Waiting for answer..."}
-                  </p>
-                </article>
-              );
-            })}
+        {/* Progress bar */}
+        <div className="mt-8 flex items-center gap-6">
+          <span className="text-[10px] uppercase tracking-[0.28em] text-black/50">
+            Progress
+          </span>
+          <div className="h-px flex-1 bg-black/10">
+            <motion.div
+              className="h-full bg-black"
+              animate={{ width: `${progress}%` }}
+              transition={{ duration: 0.6, ease: "easeOut" }}
+            />
           </div>
-
-          <div className="mt-8 rounded-[1.5rem] border border-coral/20 bg-coral/10 p-5">
-            <p className="text-xs uppercase tracking-[0.24em] text-coral-light">
-              Completion
-            </p>
-            <p className="mt-3 text-sm leading-7 text-cream/80">
-              {submitting
-                ? "Saving responses..."
-                : "The form will save automatically when the agent finishes all questions."}
-            </p>
-          </div>
-        </aside>
+          <span className="font-display text-sm text-black/60">
+            {answeredCount} of {form.fields.length}
+          </span>
+        </div>
       </section>
+
+      {/* Footer */}
+      <footer className="relative border-t border-black/10">
+        <div className="mx-auto flex max-w-[1600px] items-center justify-between px-8 py-8">
+          <p className="text-[10px] uppercase tracking-[0.28em] text-black/40">
+            Powered by ElevenLabs · The voice is the form
+          </p>
+          <Link
+            to="/"
+            className="text-[10px] uppercase tracking-[0.28em] text-black/60 transition hover:text-black"
+          >
+            ← sayso
+          </Link>
+        </div>
+      </footer>
     </main>
   );
 }
