@@ -106,7 +106,8 @@ export async function fetchResponses(slug: string): Promise<FormResponse[]> {
 export type ResponseStreamEvent =
   | { type: "connected"; payload: { ok: true; slug: string } }
   | { type: "ping"; payload: { ts: number } }
-  | { type: "response.created"; payload: { response: FormResponse } };
+  | { type: "response.created"; payload: { response: FormResponse } }
+  | { type: "response.updated"; payload: { response: FormResponse } };
 
 function parseSseEvent(block: string): ResponseStreamEvent | null {
   const lines = block
@@ -131,7 +132,12 @@ function parseSseEvent(block: string): ResponseStreamEvent | null {
 
   const payload = JSON.parse(dataLines.join("\n")) as unknown;
 
-  if (event === "connected" || event === "ping" || event === "response.created") {
+  if (
+    event === "connected" ||
+    event === "ping" ||
+    event === "response.created" ||
+    event === "response.updated"
+  ) {
     return { type: event, payload } as ResponseStreamEvent;
   }
 
@@ -186,17 +192,46 @@ export async function subscribeToResponsesStream(
   return () => controller.abort();
 }
 
-export async function submitResponse(
+export async function createResponse(
   slug: string,
   answers: Record<string, unknown>,
-  duration: number,
+  options?: {
+    completed?: boolean;
+    duration?: number;
+  },
 ): Promise<FormResponse> {
   const res = await fetch(`${API_BASE}/api/forms/${slug}/responses`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ answers, completed: true, duration }),
+    body: JSON.stringify({
+      answers,
+      completed: options?.completed,
+      duration: options?.duration,
+    }),
   });
-  if (!res.ok) throw new Error(`Failed to submit response: ${res.statusText}`);
+  if (!res.ok) throw new Error(`Failed to create response: ${res.statusText}`);
+  return res.json();
+}
+
+export async function updateResponse(
+  slug: string,
+  responseId: string,
+  answers: Record<string, unknown>,
+  options?: {
+    completed?: boolean;
+    duration?: number;
+  },
+): Promise<FormResponse> {
+  const res = await fetch(`${API_BASE}/api/forms/${slug}/responses/${responseId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      answers,
+      completed: options?.completed,
+      duration: options?.duration,
+    }),
+  });
+  if (!res.ok) throw new Error(`Failed to update response: ${res.statusText}`);
   return res.json();
 }
 

@@ -38,7 +38,7 @@ function looksLikeEnglish(text: string | null | undefined): boolean {
 function fieldInstruction(field: FormField, index: number): string {
   const num = index + 1;
   const required = field.required ? " (required)" : " (optional — skip if patient declines)";
-  let instruction = `${num}. "${field.label}"${required}`;
+  let instruction = `${num}. Field id: "${field.id}"\n   Question: "${field.label}"${required}`;
 
   switch (field.type) {
     case "boolean":
@@ -196,7 +196,8 @@ export function buildAgentPrompt(form: Form): string {
     "Important: asking one question at a time does not mean processing one detail at a time. If the user gives multiple clear details in one answer, capture everything that is unambiguous before moving on.",
     "If the answer is vague, ask a single short follow-up to clarify before saving.",
     "If the user sounds uncertain, reassure them briefly and continue gently.",
-    "After each clear answer, call the `save_form_answer` tool with the field id and the value.",
+    "After each clear answer, call the `save_form_answer` tool with the exact field id and the value.",
+    "Use the exact field ids shown below. Do not invent ids, translate ids, or use the full question label as the id unless that exact text is the field id.",
     "When every required field is collected, give one short warm closing sentence, then call the `complete_form` tool as your last action.",
     "If a tool name is unavailable, try `save_answer` or `submit_form` as fallbacks.",
   );
