@@ -1,7 +1,7 @@
 import type { FormResponse } from "../db/schema.js";
 
 type ResponseEvent = {
-  type: "response.created";
+  type: "response.created" | "response.updated";
   response: FormResponse;
 };
 
@@ -37,6 +37,20 @@ export async function publishFormResponseCreated(
   await Promise.allSettled(
     Array.from(subscribers).map((subscriber) =>
       Promise.resolve(subscriber({ type: "response.created", response })),
+    ),
+  );
+}
+
+export async function publishFormResponseUpdated(
+  formId: string,
+  response: FormResponse,
+): Promise<void> {
+  const subscribers = channels.get(formId);
+  if (!subscribers?.size) return;
+
+  await Promise.allSettled(
+    Array.from(subscribers).map((subscriber) =>
+      Promise.resolve(subscriber({ type: "response.updated", response })),
     ),
   );
 }

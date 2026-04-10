@@ -7,9 +7,14 @@ import {
 } from "@elevenlabs/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getSignedUrl } from "@/lib/elevenlabs";
-import { fetchForm, submitResponse, FormNotFoundError } from "@/lib/api";
+import {
+  createResponse,
+  fetchForm,
+  FormNotFoundError,
+  updateResponse,
+} from "@/lib/api";
 import { buildAgentFirstMessage, buildAgentPrompt } from "@/lib/prompt";
-import type { Form } from "@/types/forms";
+import type { Form, FormResponse } from "@/types/forms";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -50,6 +55,41 @@ function normalizeAnswerValue(value: unknown): string {
       .join(", ");
   }
   return String(value).trim();
+}
+
+function normalizeFieldKey(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[\s_-]+/g, " ")
+    .replace(/[^\w\s]/g, "");
+}
+
+function resolveFieldId(form: Form, params: SaveAnswerParams): string | null {
+  const rawFieldKey = [params.fieldId, params.field, params.questionId].find(
+    (value): value is string => typeof value === "string" && value.trim().length > 0,
+  );
+
+  if (!rawFieldKey) return null;
+
+  const directMatch = form.fields.find((field) => field.id === rawFieldKey.trim());
+  if (directMatch) return directMatch.id;
+
+  if (/^\d+$/.test(rawFieldKey.trim())) {
+    const position = Number(rawFieldKey.trim()) - 1;
+    return form.fields[position]?.id ?? null;
+  }
+
+  const normalized = normalizeFieldKey(rawFieldKey);
+  const fuzzyMatch = form.fields.find(
+    (field) =>
+      normalizeFieldKey(field.id) === normalized ||
+      normalizeFieldKey(field.label) === normalized,
+  );
+
+  return fuzzyMatch?.id ?? null;
 }
 
 // ── Shared shell ─────────────────────────────────────────────────────────────
@@ -365,9 +405,15 @@ function VoiceFormCanvas({ form }: { form: Form }) {
   const [completed, setCompleted] = useState(false);
   const [starting, setStarting] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">(
+    "idle",
+  );
+  const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
   const answersRef = useRef<Record<string, string>>(createInitialAnswers(form));
   const startTimeRef = useRef<number | null>(null);
   const slugRef = useRef(form.slug);
+  const responseIdRef = useRef<string | null>(null);
+  const saveChainRef = useRef<Promise<FormResponse | null>>(Promise.resolve(null));
   const isSubmittingRef = useRef(false);
   const isCompletedRef = useRef(false);
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([
@@ -379,11 +425,20 @@ function VoiceFormCanvas({ form }: { form: Form }) {
   ]);
   const transcriptEndRef = useRef<HTMLDivElement>(null);
 
+  const totalQuestions = form.fields.length;
   const answeredCount = useMemo(
     () => Object.values(answers).filter(Boolean).length,
     [answers],
   );
-  const progress = Math.round((answeredCount / form.fields.length) * 100);
+  const progress =
+    totalQuestions === 0 ? 100 : Math.round((answeredCount / totalQuestions) * 100);
+  const firstIncompleteIndex = form.fields.findIndex(
+    (field) => !answers[field.id]?.trim(),
+  );
+  const currentQuestionIndex =
+    firstIncompleteIndex === -1 ? Math.max(totalQuestions - 1, 0) : firstIncompleteIndex;
+  const currentField = totalQuestions > 0 ? form.fields[currentQuestionIndex] : null;
+  const remainingCount = Math.max(totalQuestions - answeredCount, 0);
 
   const conversation = useConversation({
     onConnect: ({ conversationId }) => {
@@ -432,12 +487,74 @@ function VoiceFormCanvas({ form }: { form: Form }) {
     transcriptEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [transcript]);
 
+  const getDurationSeconds = () => {
+    if (!startTimeRef.current) return 0;
+    return Math.max(0, Math.round((Date.now() - startTimeRef.current) / 1000));
+  };
+
+  const queueResponseSave = (
+    nextAnswers: Record<string, string>,
+    options?: { completed?: boolean },
+  ) => {
+    const answersSnapshot = { ...nextAnswers };
+    const completedFlag = options?.completed ?? false;
+
+    setSaveState("saving");
+
+    const queuedSave = saveChainRef.current
+      .catch(() => null)
+      .then(async () => {
+        const response = responseIdRef.current
+          ? await updateResponse(
+              slugRef.current,
+              responseIdRef.current,
+              answersSnapshot,
+              {
+                completed: completedFlag,
+                duration: getDurationSeconds(),
+              },
+            )
+          : await createResponse(slugRef.current, answersSnapshot, {
+              completed: completedFlag,
+              duration: getDurationSeconds(),
+            });
+
+        responseIdRef.current = response.id;
+        return response;
+      });
+
+    saveChainRef.current = queuedSave;
+
+    return queuedSave
+      .then((response) => {
+        setSaveState("saved");
+        setLastSavedAt(Date.now());
+        return response;
+      })
+      .catch((error) => {
+        console.error("Failed to persist form response:", error);
+        setSaveState("error");
+        throw error;
+      });
+  };
+
   // ── Client tools ──────────────────────────────────────────────────────────
 
   const saveAnswer = (params: SaveAnswerParams) => {
-    const fieldId = params.fieldId ?? params.field ?? params.questionId;
+    const resolvedFieldId = resolveFieldId(form, params);
     const value = normalizeAnswerValue(params.value ?? params.answer);
-    if (!fieldId || !value) return "No answer saved — incomplete payload.";
+    const fieldId = resolvedFieldId ?? currentField?.id ?? null;
+    if (!fieldId || !value) {
+      console.warn("Rejected save_form_answer call due to incomplete payload", params);
+      return "No answer saved — incomplete payload.";
+    }
+
+    if (!resolvedFieldId && currentField) {
+      console.warn(
+        `Falling back to current field "${currentField.id}" for tool payload`,
+        params,
+      );
+    }
 
     const nextAnswers = {
       ...answersRef.current,
@@ -446,6 +563,16 @@ function VoiceFormCanvas({ form }: { form: Form }) {
 
     answersRef.current = nextAnswers;
     setAnswers(nextAnswers);
+    void queueResponseSave(nextAnswers).catch(() => {
+      setTranscript((t) => [
+        ...t,
+        {
+          id: `draft-save-error-${Date.now()}`,
+          role: "system",
+          text: "Failed to save this answer to the database. The form will keep trying when more answers arrive.",
+        },
+      ]);
+    });
 
     return `Saved answer for ${fieldId}.`;
   };
@@ -490,14 +617,11 @@ function VoiceFormCanvas({ form }: { form: Form }) {
       return `The form is not complete yet. Ask the user for the required field "${nextField.label}" (field id: ${nextField.id}).`;
     }
 
-    const duration = startTimeRef.current
-      ? Math.round((Date.now() - startTimeRef.current) / 1000)
-      : 0;
     const answersToSubmit = answersRef.current;
 
     isSubmittingRef.current = true;
     setSubmitting(true);
-    submitResponse(slugRef.current, answersToSubmit, duration)
+    queueResponseSave(answersToSubmit, { completed: true })
       .then(() => {
         setAnswers(answersToSubmit);
         isCompletedRef.current = true;
@@ -512,7 +636,7 @@ function VoiceFormCanvas({ form }: { form: Form }) {
         finishSuccessfulSubmission();
       })
       .catch((err) => {
-        console.error("Failed to submit response:", err);
+        console.error("Failed to finalize response:", err);
         setTranscript((t) => [
           ...t,
           {
@@ -574,6 +698,24 @@ function VoiceFormCanvas({ form }: { form: Form }) {
       ? titleWords.slice(0, -1).join(" ")
       : form.title;
   const headTail = titleWords.length > 1 ? titleWords[titleWords.length - 1] : "";
+  const currentQuestionNumber = totalQuestions === 0 ? 0 : currentQuestionIndex + 1;
+  const lastSavedLabel = lastSavedAt
+    ? new Date(lastSavedAt).toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : null;
+  const saveStateLabel = submitting
+    ? "Finalizing response"
+    : saveState === "saving"
+      ? "Saving latest answer"
+      : saveState === "saved"
+        ? lastSavedLabel
+          ? `Saved to database at ${lastSavedLabel}`
+          : "Saved to database"
+        : saveState === "error"
+          ? "Database sync needs attention"
+          : "Waiting for first answer";
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-white text-black font-body">
@@ -685,6 +827,9 @@ function VoiceFormCanvas({ form }: { form: Form }) {
               {progress}
               <span className="text-2xl text-black/40">%</span>
             </motion.p>
+            <p className="mt-3 text-[10px] uppercase tracking-[0.28em] text-black/45">
+              {answeredCount} answered · {remainingCount} left
+            </p>
           </div>
         </motion.div>
       </section>
@@ -727,6 +872,49 @@ function VoiceFormCanvas({ form }: { form: Form }) {
                   <span className="font-display text-lg capitalize">
                     {conversation.mode || "idle"}
                   </span>
+                </div>
+              </div>
+
+              <div className="mt-10 grid gap-px overflow-hidden border border-black/10 bg-black md:grid-cols-[1.2fr_0.8fr]">
+                <div className="bg-white p-6">
+                  <div className="flex items-center justify-between gap-4">
+                    <p className="text-[10px] uppercase tracking-[0.28em] text-black/45">
+                      Current question
+                    </p>
+                    <p className="text-[10px] uppercase tracking-[0.28em] text-black/35">
+                      {currentQuestionNumber}/{totalQuestions}
+                    </p>
+                  </div>
+                  <p className="mt-4 font-display text-2xl leading-tight text-black">
+                    {currentField ? currentField.label : "All questions answered."}
+                  </p>
+                  <div className="mt-6 h-2 overflow-hidden rounded-full bg-black/10">
+                    <motion.div
+                      className="h-full bg-emerald-500"
+                      animate={{ width: `${progress}%` }}
+                      transition={{ duration: 0.6, ease: "easeOut" }}
+                    />
+                  </div>
+                  <p className="mt-3 text-[10px] uppercase tracking-[0.28em] text-black/45">
+                    {answeredCount} complete · {remainingCount} remaining
+                  </p>
+                </div>
+                <div className="bg-[#f3efe6] p-6 text-black">
+                  <p className="text-[10px] uppercase tracking-[0.28em] text-black/45">
+                    Database sync
+                  </p>
+                  <p className="mt-4 font-display text-2xl leading-tight">
+                    {saveState === "error"
+                      ? "Needs retry."
+                      : saveState === "saved"
+                        ? "Draft saved."
+                        : saveState === "saving" || submitting
+                          ? "Saving live."
+                          : "Standing by."}
+                  </p>
+                  <p className="mt-3 text-sm leading-6 text-black/60">
+                    {saveStateLabel}
+                  </p>
                 </div>
               </div>
 
@@ -894,21 +1082,57 @@ function VoiceFormCanvas({ form }: { form: Form }) {
           <aside className="flex flex-col bg-black text-white">
             <div className="border-b border-white/10 p-8 lg:p-10">
               <p className="text-[10px] uppercase tracking-[0.32em] text-white/50">
-                § 03 — Captured
+                § 03 — Progress
               </p>
               <h2 className="mt-4 font-display text-4xl font-semibold leading-[0.95] md:text-5xl">
-                Structured <em className="italic">output</em>.
+                Question by <em className="italic">question</em>.
               </h2>
               <p className="mt-5 max-w-md text-sm leading-7 text-white/60">
-                Every answer lands in a typed schema — not a transcript. The
-                agent calls client tools, we render the results live.
+                Each answer is captured live, marked against its question, and
+                saved to the database as the conversation moves forward.
               </p>
+              <div className="mt-8 grid gap-3 sm:grid-cols-2">
+                <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+                  <p className="text-[10px] uppercase tracking-[0.28em] text-white/45">
+                    Form progress
+                  </p>
+                  <p className="mt-3 font-display text-4xl leading-none">
+                    <span className="text-emerald-300">{progress}</span>
+                    <span className="text-xl text-emerald-300/55">%</span>
+                  </p>
+                  <p className="mt-3 text-sm text-white/60">
+                    {answeredCount} of {totalQuestions} questions complete
+                  </p>
+                </div>
+                <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+                  <p className="text-[10px] uppercase tracking-[0.28em] text-white/45">
+                    Current focus
+                  </p>
+                  <p className="mt-3 font-display text-2xl leading-tight text-white">
+                    {currentField ? `Q${currentQuestionNumber}` : "Done"}
+                  </p>
+                  <p className="mt-3 text-sm leading-6 text-white/60">
+                    {currentField ? currentField.label : "Every question has an answer."}
+                  </p>
+                </div>
+              </div>
             </div>
 
             <div className="flex-1 divide-y divide-white/10">
               {form.fields.map((field, index) => {
                 const value = answers[field.id];
                 const done = Boolean(value);
+                const isCurrent = !done && index === currentQuestionIndex;
+                const statusLabel = done
+                  ? "Complete"
+                  : isCurrent
+                    ? isConnected
+                      ? "In progress"
+                      : "Next up"
+                    : index < currentQuestionIndex
+                      ? "Skipped"
+                      : "Queued";
+                const questionProgress = done ? 100 : isCurrent ? 48 : 0;
                 return (
                   <motion.article
                     key={field.id}
@@ -919,7 +1143,9 @@ function VoiceFormCanvas({ form }: { form: Form }) {
                       delay: 0.5 + index * 0.06,
                       ease: [0.22, 1, 0.36, 1],
                     }}
-                    className="relative px-8 py-6 lg:px-10"
+                    className={`relative px-8 py-6 lg:px-10 ${
+                      isCurrent ? "bg-white/[0.03]" : ""
+                    }`}
                   >
                     <div className="flex items-start justify-between gap-6">
                       <div className="flex-1">
@@ -935,10 +1161,34 @@ function VoiceFormCanvas({ form }: { form: Form }) {
                               · Required
                             </span>
                           )}
+                          <span
+                            className={`rounded-full px-2 py-1 text-[9px] uppercase tracking-[0.28em] ${
+                              done
+                                ? "bg-emerald-300 text-black"
+                                : isCurrent
+                                  ? "bg-emerald-300/15 text-emerald-200"
+                                  : "bg-white/5 text-white/45"
+                            }`}
+                          >
+                            {statusLabel}
+                          </span>
                         </div>
                         <p className="mt-3 font-display text-lg leading-6 text-white">
                           {field.label}
                         </p>
+                        <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-white/10">
+                          <motion.div
+                            className={`h-full ${
+                              done
+                                ? "bg-emerald-300"
+                                : isCurrent
+                                  ? "bg-emerald-400"
+                                  : "bg-white/20"
+                            }`}
+                            animate={{ width: `${questionProgress}%` }}
+                            transition={{ duration: 0.45, ease: "easeOut" }}
+                          />
+                        </div>
                         <AnimatePresence mode="wait">
                           <motion.p
                             key={value || "empty"}
@@ -957,7 +1207,11 @@ function VoiceFormCanvas({ form }: { form: Form }) {
                         animate={done ? { scale: [1, 1.4, 1] } : {}}
                         transition={{ duration: 0.5 }}
                         className={`mt-2 inline-block h-2 w-2 flex-shrink-0 rounded-full ${
-                          done ? "bg-white" : "bg-white/20"
+                          done
+                            ? "bg-emerald-300"
+                            : isCurrent
+                              ? "bg-emerald-400"
+                              : "bg-white/20"
                         }`}
                       />
                     </div>
@@ -969,7 +1223,7 @@ function VoiceFormCanvas({ form }: { form: Form }) {
             {/* Completion banner */}
             <div className="border-t border-white/10 p-8 lg:p-10">
               <AnimatePresence mode="wait">
-                {submitting ? (
+                {submitting || saveState === "saving" ? (
                   <motion.div
                     key="saving"
                     initial={{ opacity: 0 }}
@@ -987,7 +1241,35 @@ function VoiceFormCanvas({ form }: { form: Form }) {
                       className="h-4 w-4 rounded-full border-2 border-white/20 border-t-white"
                     />
                     <span className="text-[10px] uppercase tracking-[0.28em] text-white/60">
-                      Saving responses…
+                      {submitting
+                        ? "Finalizing response…"
+                        : "Saving latest answer…"}
+                    </span>
+                  </motion.div>
+                ) : saveState === "saved" ? (
+                  <motion.div
+                    key="saved"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="flex items-center gap-4"
+                  >
+                    <div className="h-2 w-2 rounded-full bg-emerald-300" />
+                    <span className="text-[10px] uppercase tracking-[0.28em] text-white/60">
+                      Draft saved to database
+                    </span>
+                  </motion.div>
+                ) : saveState === "error" ? (
+                  <motion.div
+                    key="error"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="flex items-center gap-4"
+                  >
+                    <div className="h-2 w-2 rounded-full bg-[#f1d7a8]" />
+                    <span className="text-[10px] uppercase tracking-[0.28em] text-white/60">
+                      Save failed. Keep the session open and try again.
                     </span>
                   </motion.div>
                 ) : (
@@ -1000,7 +1282,7 @@ function VoiceFormCanvas({ form }: { form: Form }) {
                   >
                     <div className="h-px flex-1 bg-white/20" />
                     <span className="text-[10px] uppercase tracking-[0.28em] text-white/40">
-                      Saves when the agent finishes
+                      Waiting for the first captured answer
                     </span>
                     <div className="h-px flex-1 bg-white/20" />
                   </motion.div>
@@ -1011,16 +1293,23 @@ function VoiceFormCanvas({ form }: { form: Form }) {
         </div>
 
         {/* Progress bar */}
-        <div className="mt-8 flex items-center gap-6">
+        <div className="mt-8 grid gap-4 border border-black/10 px-6 py-5 md:grid-cols-[auto_1fr_auto] md:items-center">
           <span className="text-[10px] uppercase tracking-[0.28em] text-black/50">
-            Progress
+            Form progress
           </span>
-          <div className="h-px flex-1 bg-black/10">
-            <motion.div
-              className="h-full bg-black"
-              animate={{ width: `${progress}%` }}
-              transition={{ duration: 0.6, ease: "easeOut" }}
-            />
+          <div>
+            <div className="h-2 overflow-hidden rounded-full bg-black/10">
+              <motion.div
+                className="h-full bg-emerald-500"
+                animate={{ width: `${progress}%` }}
+                transition={{ duration: 0.6, ease: "easeOut" }}
+              />
+            </div>
+            <p className="mt-3 text-sm text-black/55">
+              {currentField
+                ? `Question ${currentQuestionNumber} is the current step.`
+                : "All questions have been captured."}
+            </p>
           </div>
           <span className="font-display text-sm text-black/60">
             {answeredCount} of {form.fields.length}

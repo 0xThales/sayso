@@ -78,6 +78,15 @@ function ResponseCard({
             <span className="rounded-full bg-stone-100 px-2.5 py-0.5 text-xs text-stone-500">
               {answered.length}/{fields.length} answered
             </span>
+            <span
+              className={`rounded-full px-2.5 py-0.5 text-xs ${
+                response.completed
+                  ? "bg-emerald-50 text-emerald-600"
+                  : "bg-amber-50 text-amber-700"
+              }`}
+            >
+              {response.completed ? "Complete" : "Draft"}
+            </span>
           </div>
           <div className="mt-0.5 flex gap-3 text-xs text-stone-400">
             <span>{formatDate(response.createdAt)}</span>
@@ -173,12 +182,19 @@ export function FormDetail() {
         return;
       }
 
-      if (event.type === "response.created") {
+      if (event.type === "response.created" || event.type === "response.updated") {
         setResponses((prev) => {
-          if (prev.some((response) => response.id === event.payload.response.id)) {
-            return prev;
+          const existingIndex = prev.findIndex(
+            (response) => response.id === event.payload.response.id,
+          );
+
+          if (existingIndex === -1) {
+            return [event.payload.response, ...prev];
           }
-          return [event.payload.response, ...prev];
+
+          const next = [...prev];
+          next[existingIndex] = event.payload.response;
+          return next;
         });
       }
     })
