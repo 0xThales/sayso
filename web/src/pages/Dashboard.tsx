@@ -3,45 +3,8 @@ import { Link } from "react-router";
 import { UserButton } from "@clerk/clerk-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { fetchForms, deleteForm, type FormSummary } from "@/lib/api";
-
-function Grain() {
-  return (
-    <div
-      className="pointer-events-none fixed inset-0 z-0 opacity-[0.04] mix-blend-multiply"
-      style={{
-        backgroundImage:
-          "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' /></filter><rect width='100%25' height='100%25' filter='url(%23n)' /></svg>\")",
-      }}
-    />
-  );
-}
-
-function Waveform({
-  bars = 18,
-  className = "",
-}: {
-  bars?: number;
-  className?: string;
-}) {
-  return (
-    <div className={`flex h-10 items-end gap-1 ${className}`}>
-      {Array.from({ length: bars }).map((_, i) => (
-        <motion.span
-          key={i}
-          className="w-0.5 rounded-full bg-current"
-          animate={{ scaleY: [0.3, 1, 0.5, 0.9, 0.3] }}
-          transition={{
-            duration: 1.6,
-            repeat: Infinity,
-            delay: i * 0.06,
-            ease: "easeInOut",
-          }}
-          style={{ height: "100%", transformOrigin: "bottom" }}
-        />
-      ))}
-    </div>
-  );
-}
+import { Grain } from "@/components/ui/Grain";
+import { Waveform } from "@/components/ui/Waveform";
 
 export function Dashboard() {
   const [forms, setForms] = useState<FormSummary[]>([]);
@@ -236,7 +199,7 @@ export function Dashboard() {
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: 0.3, duration: 0.8 }}
                   >
-                    <Waveform bars={28} className="h-14 text-black" />
+                    <Waveform bars={28} className="h-14 text-black" active />
                   </motion.div>
 
                   <motion.h2
