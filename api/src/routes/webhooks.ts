@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 import { createHmac, timingSafeEqual } from "node:crypto";
+import type { Db } from "../db/index.js";
+import { schema } from "../db/index.js";
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -15,10 +17,6 @@ type EvaluationResult = {
   rationale?: string;
 };
 
-type DataCollectionResult = {
-  [key: string]: { value: string; rationale?: string };
-};
-
 type PostCallPayload = {
   type: "post_call_transcription" | "post_call_audio" | "call_initiation_failure";
   event_timestamp?: number;
@@ -29,7 +27,7 @@ type PostCallPayload = {
   conversation_initiation_client_data?: Record<string, unknown>;
   analysis?: {
     evaluation_criteria_results?: Record<string, EvaluationResult>;
-    data_collection_results?: DataCollectionResult;
+    data_collection_results?: Record<string, { value: string; rationale?: string }>;
     call_successful?: string;
     transcript_summary?: string;
   };
@@ -50,7 +48,6 @@ function verifySignature(
 ): boolean {
   if (!signature) return false;
 
-  // ElevenLabs signature format: t=<timestamp>,v0=<hmac>
   const parts = Object.fromEntries(
     signature.split(",").map((p) => {
       const [k, ...v] = p.split("=");
@@ -74,7 +71,9 @@ function verifySignature(
 
 // ── Route ───────────────────────────────────────────────────────────────────
 
-const webhooks = new Hono()
+type Env = { Variables: { db?: Db } };
+
+const webhooks = new Hono<Env>()
 
 .post("/elevenlabs", async (c) => {
   const secret = process.env.ELEVENLABS_WEBHOOK_SECRET;
@@ -95,7 +94,7 @@ const webhooks = new Hono()
     const { conversation_id, agent_id, transcript, analysis, metadata } = payload;
 
     console.log(
-      `[webhook] Post-call transcript received`,
+      `[webhook] Post-call transcript`,
       JSON.stringify({
         conversation_id,
         agent_id,
@@ -112,7 +111,34 @@ const webhooks = new Hono()
       }),
     );
 
-    // TODO: persist transcript + evaluation results to DB
+    // Persist to DB if available
+    const db = c.get("db");
+    if (db && conversation_id) {
+      try {
+        // Try to resolve formId from dynamic variables passed at session start
+        const clientData = payload.conversation_initiation_client_data as
+          | { form_id?: string }
+          | undefined;
+        const formId = clientData?.form_id ?? null;
+
+        await db.insert(schema.conversations).values({
+          conversationId: conversation_id,
+          agentId: agent_id ?? null,
+          formId,
+          transcript: transcript ?? null,
+          evaluation: analysis?.evaluation_criteria_results ?? null,
+          summary: analysis?.transcript_summary ?? null,
+          durationSecs: metadata?.call_duration_secs
+            ? Math.round(metadata.call_duration_secs)
+            : null,
+          status: payload.status ?? null,
+        });
+
+        console.log(`[webhook] Saved conversation ${conversation_id} to DB`);
+      } catch (err) {
+        console.error("[webhook] Failed to save conversation:", err);
+      }
+    }
   } else if (payload.type === "call_initiation_failure") {
     console.error("[webhook] Call initiation failed:", JSON.stringify(payload));
   }

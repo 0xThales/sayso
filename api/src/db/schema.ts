@@ -50,6 +50,37 @@ export const responses = pgTable("responses", {
     .defaultNow(),
 });
 
+// ── Conversations (post-call webhook data) ──────────────────────────────────
+
+export const conversations = pgTable("conversations", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => nanoid(12)),
+  conversationId: text("conversation_id").notNull().unique(),
+  agentId: text("agent_id"),
+  formId: text("form_id").references(() => forms.id, { onDelete: "set null" }),
+  transcript: jsonb("transcript").$type<ConversationTranscript[]>(),
+  evaluation: jsonb("evaluation").$type<Record<string, EvaluationResult>>(),
+  summary: text("summary"),
+  durationSecs: integer("duration_secs"),
+  status: text("status"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export interface ConversationTranscript {
+  role: "agent" | "user";
+  message: string;
+  time_in_call_secs?: number;
+}
+
+export interface EvaluationResult {
+  criteria_id: string;
+  result: "success" | "failure" | "unknown";
+  rationale?: string;
+}
+
 // ── Field type (used in forms.fields JSONB) ──────────────────────────────────
 
 export type FieldType =

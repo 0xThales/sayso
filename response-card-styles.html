@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sayso — Response Card Styles</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,700;1,400&family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,600;9..144,700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --cream: #FFF8F0;
+    --coral: #FF6B5A;
+    --coral-light: #FF8A7A;
+    --coral-dark: #E5554A;
+    --ink: #231f1b;
+    --stone-50: #f5f5f4;
+    --stone-100: #f5f5f4;
+    --stone-200: #e7e5e4;
+    --stone-300: #d6d3d1;
+    --stone-400: #a8a29e;
+    --stone-500: #78716c;
+    --stone-600: #57534e;
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: #1a1a1a;
+    color: #ccc;
+    min-height: 100vh;
+  }
+
+  /* ── Top bar ─────────────────────────────────── */
+  .top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 24px;
+    border-bottom: 1px solid #333;
+    background: #1a1a1a;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .top-bar h1 {
+    font-family: 'Fraunces', serif;
+    font-size: 18px;
+    font-weight: 600;
+    color: #fff;
+  }
+
+  .top-bar .subtitle {
+    font-size: 13px;
+    color: #888;
+    margin-left: 12px;
+  }
+
+  /* ── Style switcher ──────────────────────────── */
+  .style-tabs {
+    display: flex;
+    gap: 6px;
+  }
+
+  .style-tab {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border: 1px solid #333;
+    border-radius: 8px;
+    background: transparent;
+    color: #999;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .style-tab:hover {
+    border-color: #555;
+    color: #ddd;
+  }
+
+  .style-tab.active {
+    background: var(--coral);
+    border-color: var(--coral);
+    color: #fff;
+  }
+
+  .style-tab .tab-letter {
+    font-family: 'Fraunces', serif;
+    font-weight: 700;
+    font-size: 14px;
+  }
+
+  /* ── Preview area ────────────────────────────── */
+  .preview-area {
+    background: var(--stone-50);
+    min-height: calc(100vh - 130px);
+    padding: 48px 24px;
+  }
+
+  .preview-container {
+    max-width: 720px;
+    margin: 0 auto;
+  }
+
+  .preview-header {
+    margin-bottom: 32px;
+  }
+
+  .preview-header h2 {
+    font-family: 'Fraunces', serif;
+    font-size: 32px;
+    font-weight: 600;
+    color: var(--ink);
+    letter-spacing: -0.02em;
+  }
+
+  .preview-header p {
+    color: var(--stone-500);
+    font-size: 14px;
+    margin-top: 4px;
+  }
+
+  .preview-header .meta-line {
+    font-size: 13px;
+    color: var(--stone-400);
+    margin-top: 4px;
+  }
+
+  /* ── Style A: Interview Transcript ───────────── */
+  .style-a .response-card {
+    padding-left: 24px;
+    border-left: 3px solid var(--coral);
+    margin-bottom: 48px;
+    position: relative;
+  }
+
+  .style-a .response-card + .response-card {
+    padding-top: 48px;
+    border-top: none;
+  }
+
+  .style-a .response-card + .response-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 24px;
+    right: 0;
+    height: 1px;
+    background: var(--stone-200);
+  }
+
+  .style-a .card-header {
+    margin-bottom: 28px;
+  }
+
+  .style-a .card-name {
+    font-family: 'Fraunces', serif;
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+  }
+
+  .style-a .card-meta {
+    font-size: 13px;
+    color: var(--stone-400);
+    margin-top: 4px;
+  }
+
+  .style-a .qa-list {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .style-a .qa-item {}
+
+  .style-a .qa-question {
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--stone-400);
+    margin-bottom: 6px;
+  }
+
+  .style-a .qa-answer {
+    font-size: 15px;
+    line-height: 1.65;
+    color: var(--ink);
+  }
+
+  /* ── Style B: Cream Index Card ──────────────── */
+  .style-b .response-card {
+    background: var(--cream);
+    border-radius: 12px;
+    padding: 28px 32px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    transition: box-shadow 0.25s ease;
+  }
+
+  .style-b .response-card:hover {
+    box-shadow: 0 4px 16px rgba(180, 150, 120, 0.12);
+  }
+
+  .style-b .card-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding-bottom: 16px;
+    border-bottom: 1px solid rgba(0,0,0,0.06);
+    margin-bottom: 20px;
+  }
+
+  .style-b .card-name {
+    font-family: 'Fraunces', serif;
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  .style-b .card-meta {
+    font-size: 12px;
+    color: var(--stone-400);
+    font-style: italic;
+  }
+
+  .style-b .qa-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .style-b .qa-item {
+    padding: 14px 0;
+    border-bottom: 1px solid rgba(0,0,0,0.04);
+  }
+
+  .style-b .qa-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+
+  .style-b .qa-item:first-child {
+    padding-top: 0;
+  }
+
+  .style-b .qa-question {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--stone-500);
+    margin-bottom: 4px;
+  }
+
+  .style-b .qa-answer {
+    font-size: 14px;
+    line-height: 1.55;
+    color: var(--ink);
+  }
+
+  /* ── Style C: Editorial Column ──────────────── */
+  .style-c .response-card {
+    border-top: 2px solid var(--ink);
+    padding: 20px 0 32px;
+    margin-bottom: 0;
+  }
+
+  .style-c .response-card + .response-card {
+    border-top: 1px solid var(--stone-300);
+  }
+
+  .style-c .card-header {
+    margin-bottom: 16px;
+  }
+
+  .style-c .card-meta {
+    font-size: 12px;
+    color: var(--stone-400);
+    margin-bottom: 6px;
+    letter-spacing: 0.02em;
+  }
+
+  .style-c .card-name {
+    font-family: 'Fraunces', serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--ink);
+    display: inline-block;
+    position: relative;
+  }
+
+  .style-c .card-name::after {
+    content: '';
+    position: absolute;
+    bottom: -4px;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: var(--coral);
+  }
+
+  .style-c .qa-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px 32px;
+  }
+
+  .style-c .qa-item {}
+
+  .style-c .qa-question {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--ink);
+    margin-bottom: 2px;
+    line-height: 1.3;
+  }
+
+  .style-c .qa-answer {
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--stone-600);
+  }
+
+  /* ── Style D: Pull Quote ────────────────────── */
+  .style-d .response-card {
+    background: #fff;
+    border-left: 4px solid var(--coral);
+    border-radius: 16px;
+    padding: 32px 36px;
+    margin-bottom: 24px;
+  }
+
+  .style-d .card-header {
+    margin-bottom: 28px;
+  }
+
+  .style-d .card-name {
+    font-family: 'Fraunces', serif;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  .style-d .card-meta {
+    font-size: 12px;
+    color: var(--stone-400);
+    margin-top: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .style-d .status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+
+  .style-d .status-dot.complete { background: #22c55e; }
+  .style-d .status-dot.draft { background: #f59e0b; }
+
+  .style-d .qa-list {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .style-d .qa-item {}
+
+  .style-d .qa-question {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--coral);
+    margin-bottom: 6px;
+    letter-spacing: 0.02em;
+  }
+
+  .style-d .qa-answer {
+    font-family: 'Fraunces', serif;
+    font-size: 17px;
+    font-weight: 300;
+    line-height: 1.7;
+    color: var(--ink);
+  }
+
+  .style-d .show-more-btn {
+    background: none;
+    border: none;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--coral);
+    cursor: pointer;
+    padding: 0;
+    margin-top: 8px;
+    transition: color 0.2s;
+  }
+
+  .style-d .show-more-btn:hover {
+    color: var(--coral-dark);
+  }
+
+  /* ── Prompt output ───────────────────────────── */
+  .prompt-bar {
+    border-top: 1px solid #333;
+    background: #1a1a1a;
+    padding: 20px 24px;
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .prompt-text {
+    flex: 1;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    color: #ccc;
+    white-space: pre-wrap;
+  }
+
+  .copy-btn {
+    padding: 8px 16px;
+    border: 1px solid #444;
+    border-radius: 6px;
+    background: transparent;
+    color: #ccc;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .copy-btn:hover {
+    border-color: var(--coral);
+    color: var(--coral);
+  }
+
+  .copy-btn.copied {
+    border-color: #22c55e;
+    color: #22c55e;
+  }
+
+  /* ── Hidden utility ──────────────────────────── */
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<!-- Top bar -->
+<div class="top-bar">
+  <div style="display:flex;align-items:baseline;">
+    <h1>Response Card Styles</h1>
+    <span class="subtitle">Pick a direction for Sayso response cards</span>
+  </div>
+  <div class="style-tabs">
+    <button class="style-tab active" data-style="a">
+      <span class="tab-letter">A</span> Interview Transcript
+    </button>
+    <button class="style-tab" data-style="b">
+      <span class="tab-letter">B</span> Cream Index Card
+    </button>
+    <button class="style-tab" data-style="c">
+      <span class="tab-letter">C</span> Editorial Column
+    </button>
+    <button class="style-tab" data-style="d">
+      <span class="tab-letter">D</span> Pull Quote
+    </button>
+  </div>
+</div>
+
+<!-- Preview -->
+<div class="preview-area">
+  <div class="preview-container">
+    <div class="preview-header">
+      <h2>Personal Training Intake</h2>
+      <p>6 questions &middot; 2 responses</p>
+      <div class="meta-line">
+        <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#22c55e;margin-right:4px;vertical-align:middle;"></span>
+        Live updates on
+      </div>
+    </div>
+
+    <div id="cards-container"></div>
+  </div>
+</div>
+
+<!-- Prompt bar -->
+<div class="prompt-bar">
+  <div class="prompt-text" id="prompt-output"></div>
+  <button class="copy-btn" id="copy-btn">Copy prompt</button>
+</div>
+
+<script>
+  // ── Data ──────────────────────────────────────
+  const responses = [
+    {
+      name: 'Carlos Mendoza',
+      date: 'Apr 11, 2026, 7:10 AM',
+      duration: '4m 5s',
+      status: 'complete',
+      answered: 6,
+      total: 6,
+      qa: [
+        { q: '¿Cómo te llamas?', a: 'Carlos Mendoza' },
+        { q: '¿Qué quieres lograr con el entrenamiento?', a: 'Quiero bajar de peso y ganar masa muscular. Llevo un año bastante sedentario por el trabajo remoto y quiero recuperar la forma que tenía antes.' },
+        { q: '¿Has entrenado antes? ¿Qué estás haciendo actualmente?', a: 'Entrené en gimnasio hace como 3 años, hacía rutinas de fuerza. Ahora solo camino un poco los fines de semana.' },
+        { q: '¿Cuántos días por semana puedes entrenar?', a: '4' },
+        { q: '¿Tienes alguna lesión, dolor crónico o limitación física?', a: 'Tengo un problema leve en la rodilla izquierda, a veces me molesta cuando hago sentadillas profundas.' },
+        { q: '¿Qué esperas de trabajar con un entrenador?', a: 'Quiero una rutina personalizada y que me ayude con la disciplina. Me cuesta ser constante solo.' },
+      ]
+    },
+    {
+      name: 'María López',
+      date: 'Apr 10, 2026, 3:22 PM',
+      duration: '2m 48s',
+      status: 'complete',
+      answered: 6,
+      total: 6,
+      qa: [
+        { q: '¿Cómo te llamas?', a: 'María López' },
+        { q: '¿Qué quieres lograr con el entrenamiento?', a: 'Prepararme para una media maratón en octubre.' },
+        { q: '¿Has entrenado antes?', a: 'Sí, corro 3 veces por semana desde hace un año.' },
+        { q: '¿Cuántos días por semana puedes entrenar?', a: '5' },
+        { q: '¿Tienes alguna lesión?', a: 'No, ninguna.' },
+        { q: '¿Qué esperas de trabajar con un entrenador?', a: 'Un plan de entrenamiento progresivo con trabajo de fuerza complementario.' },
+      ]
+    }
+  ];
+
+  // ── State ─────────────────────────────────────
+  const state = { style: 'a', expandedCards: {} };
+
+  // ── Render ────────────────────────────────────
+  function renderCards() {
+    const container = document.getElementById('cards-container');
+
+    // Set class on container
+    container.className = `style-${state.style}`;
+
+    let html = '';
+
+    responses.forEach((r, ri) => {
+      const cardKey = `${state.style}-${ri}`;
+      const isExpanded = state.expandedCards[cardKey];
+
+      // Decide which QA to show
+      let visibleQA = r.qa;
+      let hasMore = false;
+      if (state.style === 'd' && !isExpanded) {
+        visibleQA = r.qa.slice(0, 3);
+        hasMore = r.qa.length > 3;
+      }
+
+      html += `<div class="response-card">`;
+
+      // ── Header per style ──
+      if (state.style === 'a') {
+        html += `
+          <div class="card-header">
+            <div class="card-name">${r.name}</div>
+            <div class="card-meta">${r.date} · ${r.duration} · ${r.status === 'complete' ? 'Complete' : 'Draft'}</div>
+          </div>`;
+      } else if (state.style === 'b') {
+        html += `
+          <div class="card-header">
+            <div class="card-name">${r.name}</div>
+            <div class="card-meta">${r.status === 'complete' ? 'Complete' : 'Draft'} · ${r.duration}</div>
+          </div>`;
+      } else if (state.style === 'c') {
+        html += `
+          <div class="card-header">
+            <div class="card-meta">${r.date} · ${r.duration} · ${r.answered}/${r.total} answered</div>
+            <div class="card-name">${r.name}</div>
+          </div>`;
+      } else if (state.style === 'd') {
+        html += `
+          <div class="card-header">
+            <div class="card-name">${r.name}</div>
+            <div class="card-meta">
+              <span class="status-dot ${r.status}"></span>
+              ${r.date} · ${r.duration}
+            </div>
+          </div>`;
+      }
+
+      // ── QA list ──
+      html += `<div class="qa-list">`;
+      visibleQA.forEach(item => {
+        html += `
+          <div class="qa-item">
+            <div class="qa-question">${item.q}</div>
+            <div class="qa-answer">${item.a}</div>
+          </div>`;
+      });
+      html += `</div>`;
+
+      // ── Show more (Style D) ──
+      if (state.style === 'd' && hasMore) {
+        html += `<button class="show-more-btn" onclick="toggleExpand('${cardKey}')">Show all ${r.qa.length} answers →</button>`;
+      }
+      if (state.style === 'd' && isExpanded && r.qa.length > 3) {
+        html += `<button class="show-more-btn" onclick="toggleExpand('${cardKey}')">← Show less</button>`;
+      }
+
+      html += `</div>`;
+    });
+
+    container.innerHTML = html;
+    updatePrompt();
+  }
+
+  function toggleExpand(key) {
+    state.expandedCards[key] = !state.expandedCards[key];
+    renderCards();
+  }
+
+  // ── Prompt ────────────────────────────────────
+  const styleDescriptions = {
+    a: {
+      name: 'Interview Transcript',
+      prompt: `Restyle the ResponseCard component to the "Interview Transcript" layout:
+
+- Remove the card box/border entirely — no background, no rounded corners, no border
+- Add a 3px solid coral (#FF6B5A) left border (border-left) spanning the full height of each response
+- Add 24px left padding to create space from the coral line
+- Respondent name: Fraunces 24px semibold, tracking-tight
+- Metadata (date, duration, status): 13px text in stone-400, no badges or pills — plain text with middot separators, placed below the name
+- Questions: 11px uppercase, letter-spacing 0.1em, font-weight 500, stone-400 color
+- Answers: DM Sans 15px, line-height 1.65, ink color (#231f1b)
+- 24px vertical gap between Q&A pairs, 28px gap between header and first Q&A
+- Between response cards: 48px spacing with a subtle 1px stone-200 horizontal rule
+- Remove all pill badges, grid layouts, and expand/collapse behavior`
+    },
+    b: {
+      name: 'Cream Index Card',
+      prompt: `Restyle the ResponseCard component to the "Cream Index Card" layout:
+
+- Card background: cream (#FFF8F0), border-radius 12px, no border
+- Subtle warm shadow: 0 1px 3px rgba(0,0,0,0.04)
+- On hover: transition to box-shadow 0 4px 16px rgba(180,150,120,0.12)
+- Padding: 28px 32px
+- Header: flex row with name on left, meta on right; separated from Q&A by a 1px hairline divider (rgba(0,0,0,0.06))
+- Name: Fraunces 20px semibold
+- Metadata: 12px italic text in stone-400, format "Complete · 4m 5s" (no badges)
+- Q&A pairs as a vertical definition list with 1px hairline separators (rgba(0,0,0,0.04)) between each pair
+- Questions: DM Sans 12px medium (not uppercase), stone-500
+- Answers: DM Sans 14px, line-height 1.55, ink color
+- 20px margin between cards
+- Remove all pill badges, grid layouts, and expand/collapse behavior`
+    },
+    c: {
+      name: 'Editorial Column',
+      prompt: `Restyle the ResponseCard component to the "Editorial Column" layout:
+
+- No rounded corners — sharp edges only, no background color, no card box
+- First card gets a 2px solid black top border; subsequent cards get a 1px stone-300 top border
+- Padding: 20px 0 32px
+- Metadata line ABOVE the name: 12px stone-400, format "Apr 11, 2026 · 4m 5s · 6/6 answered"
+- Name: Fraunces 22px bold with a coral (#FF6B5A) underline decoration — a 3px-tall coral line positioned 4px below the text via ::after pseudo-element, 100% width
+- Q&A pairs in a 2-column CSS grid (grid-template-columns: 1fr 1fr) with 12px row gap and 32px column gap
+- Questions: DM Sans 13px bold, ink color
+- Answers: DM Sans 13px regular, stone-600
+- Very compact spacing — no generous padding
+- Remove all pill badges, rounded corners, and expand/collapse behavior`
+    },
+    d: {
+      name: 'Pull Quote',
+      prompt: `Restyle the ResponseCard component to the "Pull Quote" layout:
+
+- Card: white background, 16px border-radius, 4px solid coral (#FF6B5A) left border
+- Padding: 32px 36px — generous breathing room
+- Name: Fraunces 18px semibold
+- Metadata: 12px stone-400 with a small colored dot (7px circle — green #22c55e for complete, amber #f59e0b for draft) before the text
+- Questions: 12px DM Sans medium, coral color, with 0.02em letter-spacing — used as small labels above each answer
+- Answers: Fraunces 17px font-weight 300, line-height 1.7 — treating answers as editorial pull quotes, not data
+- 24px gap between Q&A pairs
+- Collapse behavior: show only first 3 Q&A pairs by default, with a "Show all N answers →" text button in coral below. Clicking expands to show all, button changes to "← Show less"
+- 24px margin between cards`
+    }
+  };
+
+  function updatePrompt() {
+    const desc = styleDescriptions[state.style];
+    document.getElementById('prompt-output').textContent = desc.prompt;
+  }
+
+  // ── Tab switching ─────────────────────────────
+  document.querySelectorAll('.style-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.style-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      state.style = tab.dataset.style;
+      state.expandedCards = {};
+      renderCards();
+    });
+  });
+
+  // ── Copy button ───────────────────────────────
+  document.getElementById('copy-btn').addEventListener('click', () => {
+    const text = document.getElementById('prompt-output').textContent;
+    navigator.clipboard.writeText(text).then(() => {
+      const btn = document.getElementById('copy-btn');
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => {
+        btn.textContent = 'Copy prompt';
+        btn.classList.remove('copied');
+      }, 2000);
+    });
+  });
+
+  // ── Init ──────────────────────────────────────
+  renderCards();
+</script>
+</body>
+</html>

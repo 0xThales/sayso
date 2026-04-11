@@ -46,6 +46,10 @@ const api = new Hono<Env>()
   .get("/health", (c) => c.json({ status: "ok" }))
   .use("/forms", requireDb)
   .use("/forms/*", requireDb)
+  .use("/webhooks/*", async (c, next) => {
+    if (db) c.set("db", db as Db);
+    await next();
+  })
   .route("/elevenlabs", elevenlabs)
   .route("/forms", forms)
   .route("/forms", responses)
