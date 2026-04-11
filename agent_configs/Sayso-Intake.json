@@ -188,7 +188,9 @@
         },
         "workspace_overrides": {
             "webhooks": {
-                "post_call_webhook_id": null
+                "post_call_webhook_id": "a2d63bdbec604f728923c739514ceeb0",
+                "events": ["transcript"],
+                "send_audio": false
             },
             "conversation_initiation_client_data_webhook": null
         },
