@@ -152,7 +152,7 @@ export default function Landing({ appUrl }: { appUrl: string }) {
   ];
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-white text-black font-body">
+    <main className="relative min-h-screen bg-white text-black font-body">
       {/* Subtle grain texture */}
       <div
         className="pointer-events-none fixed inset-0 z-0 opacity-[0.04] mix-blend-multiply"
