@@ -11,7 +11,7 @@ export function setTokenGetter(fn: () => Promise<string | null>) {
   _getToken = fn;
 }
 
-async function authHeaders(): Promise<Record<string, string>> {
+export async function getAuthHeaders(): Promise<Record<string, string>> {
   if (!_getToken) return {};
   const token = await _getToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
@@ -19,6 +19,25 @@ async function authHeaders(): Promise<Record<string, string>> {
 
 function client() {
   return hc<AppType>(API_BASE);
+}
+
+async function readErrorMessage(res: Response, fallback: string) {
+  try {
+    const data = await res.json();
+    if (
+      data &&
+      typeof data === "object" &&
+      "error" in data &&
+      typeof data.error === "string" &&
+      data.error.trim()
+    ) {
+      return data.error;
+    }
+  } catch {
+    // Ignore JSON parsing failures and fall back to status text.
+  }
+
+  return res.statusText || fallback;
 }
 
 // ── Type re-exports (inferred from the API, no manual duplication) ─────────
@@ -42,7 +61,7 @@ export type { FormFieldDef as FormField, FieldType } from "@api/db/schema";
 export async function fetchForms() {
   const c = client();
   const res = await c.api.forms.$get(undefined as never, {
-    headers: await authHeaders(),
+    headers: await getAuthHeaders(),
   });
   if (!res.ok) throw new Error(`Failed to load forms: ${res.statusText}`);
   return res.json();
@@ -80,9 +99,12 @@ export async function createForm(data: {
   // Body types require validators for full inference — cast input for mutations
   const res = await c.api.forms.$post(
     { json: data } as never,
-    { headers: await authHeaders() },
+    { headers: await getAuthHeaders() },
   );
-  if (!res.ok) throw new Error(`Failed to create form: ${res.statusText}`);
+  if (!res.ok) {
+    const message = await readErrorMessage(res, `HTTP ${res.status}`);
+    throw new Error(`Failed to create form: ${message}`);
+  }
   return res.json();
 }
 
@@ -110,7 +132,7 @@ export async function updateForm(
   const c = client();
   const res = await c.api.forms[":id"].$put(
     { param: { id }, json: data } as never,
-    { headers: await authHeaders() },
+    { headers: await getAuthHeaders() },
   );
   if (!res.ok) throw new Error(`Failed to update form: ${res.statusText}`);
   return res.json();
@@ -120,7 +142,7 @@ export async function deleteForm(id: string) {
   const c = client();
   const res = await c.api.forms[":id"].$delete(
     { param: { id } },
-    { headers: await authHeaders() },
+    { headers: await getAuthHeaders() },
   );
   if (!res.ok) throw new Error(`Failed to delete form: ${res.statusText}`);
 }
@@ -131,7 +153,7 @@ export async function fetchResponses(slug: string) {
   const c = client();
   const res = await c.api.forms[":slug"].responses.$get(
     { param: { slug } },
-    { headers: await authHeaders() },
+    { headers: await getAuthHeaders() },
   );
   if (!res.ok) throw new Error(`Failed to load responses: ${res.statusText}`);
   return res.json();
@@ -230,7 +252,7 @@ export async function subscribeToResponsesStream(
   onEvent: (event: ResponseStreamEvent) => void,
 ): Promise<() => void> {
   const controller = new AbortController();
-  const headers = await authHeaders();
+  const headers = await getAuthHeaders();
 
   const res = await fetch(`${API_BASE}/api/forms/${slug}/responses/stream`, {
     headers,

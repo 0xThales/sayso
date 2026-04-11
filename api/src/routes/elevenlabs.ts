@@ -1,7 +1,15 @@
 import { Hono } from "hono";
+import { clerkAuth } from "../middleware/auth.js";
 
 const ELEVENLABS_API_BASE =
   process.env.ELEVENLABS_API_BASE ?? "https://api.elevenlabs.io";
+
+type Workflow = "creator" | "response";
+type Env = {
+  Variables: {
+    userId: string;
+  };
+};
 
 type SignedUrlResponse = {
   signed_url: string;
@@ -13,8 +21,10 @@ type ErrorStatus = 400 | 401 | 403 | 404 | 429 | 500 | 502;
 function getElevenLabsConfig() {
   const apiKey = process.env.ELEVENLABS_API_KEY;
   const defaultAgentId = process.env.ELEVENLABS_AGENT_ID;
+  const creatorAgentId = process.env.ELEVENLABS_CREATOR_AGENT_ID;
+  const responseAgentId = process.env.ELEVENLABS_RESPONSE_AGENT_ID;
   if (!apiKey) throw new Error("Missing ELEVENLABS_API_KEY");
-  return { apiKey, defaultAgentId };
+  return { apiKey, defaultAgentId, creatorAgentId, responseAgentId };
 }
 
 async function requestSignedUrl(options: {
@@ -55,12 +65,15 @@ async function requestSignedUrl(options: {
 }
 
 async function handleSignedUrlRequest(
+  workflow: Workflow,
   agentId: string | undefined,
   includeConversationId: boolean,
   branchId?: string,
 ) {
-  const { defaultAgentId } = getElevenLabsConfig();
-  const resolvedAgentId = agentId ?? defaultAgentId;
+  const { defaultAgentId, creatorAgentId, responseAgentId } = getElevenLabsConfig();
+  const workflowAgentId =
+    workflow === "creator" ? creatorAgentId : responseAgentId;
+  const resolvedAgentId = agentId ?? workflowAgentId ?? defaultAgentId;
 
   if (!resolvedAgentId) {
     return {
@@ -72,11 +85,20 @@ async function handleSignedUrlRequest(
     };
   }
 
-  return requestSignedUrl({
+  const result = await requestSignedUrl({
     agentId: resolvedAgentId,
     includeConversationId,
     branchId,
   });
+
+  if (!result.ok) return result;
+
+  return {
+    ok: true as const,
+    workflow,
+    agentId: resolvedAgentId,
+    data: result.data,
+  };
 }
 
 function toErrorStatus(status: number): ErrorStatus {
@@ -91,6 +113,8 @@ function formatResult(
   return {
     ok: true as const,
     json: {
+      workflow: result.workflow,
+      agentId: result.agentId,
       signedUrl: result.data.signed_url,
       signed_url: result.data.signed_url,
       conversationId: result.data.conversation_id,
@@ -99,12 +123,27 @@ function formatResult(
   };
 }
 
-const elevenlabs = new Hono()
+type SessionRequestBody = {
+  agentId?: string;
+  includeConversationId?: boolean;
+  branchId?: string;
+};
+
+async function parseSessionBody(c: {
+  req: {
+    json: () => Promise<unknown>;
+  };
+}) {
+  return (await c.req.json().catch(() => ({}))) as SessionRequestBody;
+}
+
+const elevenlabs = new Hono<Env>()
 
 .get("/token", async (c) => {
   try {
     const result = formatResult(
       await handleSignedUrlRequest(
+        "response",
         c.req.query("agentId") ?? undefined,
         c.req.query("includeConversationId") === "true",
         c.req.query("branchId") ?? undefined,
@@ -128,13 +167,64 @@ const elevenlabs = new Hono()
 
 .post("/conversation/signed-url", async (c) => {
   try {
-    const body = (await c.req.json().catch(() => ({}))) as {
-      agentId?: string;
-      includeConversationId?: boolean;
-      branchId?: string;
-    };
+    const body = await parseSessionBody(c);
     const result = formatResult(
       await handleSignedUrlRequest(
+        "response",
+        body.agentId,
+        Boolean(body.includeConversationId),
+        body.branchId,
+      ),
+    );
+    if (!result.ok)
+      return c.json(
+        {
+          error: result.error,
+          details: "details" in result ? result.details : undefined,
+        },
+        toErrorStatus(result.status),
+      );
+    return c.json(result.json);
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Unexpected ElevenLabs error";
+    return c.json({ error: message }, 500);
+  }
+})
+
+.post("/session/creator", clerkAuth, async (c) => {
+  try {
+    const body = await parseSessionBody(c);
+    const result = formatResult(
+      await handleSignedUrlRequest(
+        "creator",
+        body.agentId,
+        Boolean(body.includeConversationId),
+        body.branchId,
+      ),
+    );
+    if (!result.ok)
+      return c.json(
+        {
+          error: result.error,
+          details: "details" in result ? result.details : undefined,
+        },
+        toErrorStatus(result.status),
+      );
+    return c.json(result.json);
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Unexpected ElevenLabs error";
+    return c.json({ error: message }, 500);
+  }
+})
+
+.post("/session/response", async (c) => {
+  try {
+    const body = await parseSessionBody(c);
+    const result = formatResult(
+      await handleSignedUrlRequest(
+        "response",
         body.agentId,
         Boolean(body.includeConversationId),
         body.branchId,

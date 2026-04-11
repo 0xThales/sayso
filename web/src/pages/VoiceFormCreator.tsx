@@ -6,7 +6,7 @@ import {
   useConversationClientTool,
 } from "@elevenlabs/react";
 import { motion, AnimatePresence } from "framer-motion";
-import { getSignedUrl } from "@/lib/elevenlabs";
+import { getCreatorSignedUrl } from "@/lib/elevenlabs";
 import { createForm, type FieldType, type FormField } from "@/lib/api";
 import { buildFormCreatorPrompt } from "@/lib/prompt";
 import {
@@ -68,6 +68,7 @@ function CreatorCanvas({ voiceId }: { voiceId?: string }) {
   } | null>(null);
   const [starting, setStarting] = useState(false);
   const [saving, setSaving] = useState(false);
+  const isSavingRef = useRef(false);
   const draftRef = useRef<FormDraft>(emptyDraft());
   const traceRef = useRef<LangfuseTrace | null>(null);
   const transcriptEndRef = useRef<HTMLDivElement>(null);
@@ -133,6 +134,48 @@ function CreatorCanvas({ voiceId }: { voiceId?: string }) {
           id: `${event.role}-${event.event_id ?? Date.now()}`,
           role: event.role,
           text,
+        },
+      ]);
+    },
+    onAgentToolRequest: (event) => {
+      console.log("[sayso] Creator agent tool request:", event.tool_name, event);
+      traceRef.current?.event({
+        name: "tool:request",
+        metadata: {
+          toolName: event.tool_name,
+          toolCallId: event.tool_call_id,
+          toolType: event.tool_type,
+          eventId: event.event_id,
+        },
+      });
+      setTranscript((t) => [
+        ...t,
+        {
+          id: `tool-request-${event.tool_call_id ?? Date.now()}`,
+          role: "system",
+          text: `Tool request: ${event.tool_name}`,
+        },
+      ]);
+    },
+    onAgentToolResponse: (event) => {
+      console.log("[sayso] Creator agent tool response:", event.tool_name, event);
+      traceRef.current?.event({
+        name: "tool:response",
+        metadata: {
+          toolName: event.tool_name,
+          toolCallId: event.tool_call_id,
+          toolType: event.tool_type,
+          isError: event.is_error,
+          isCalled: event.is_called,
+          eventId: event.event_id,
+        },
+      });
+      setTranscript((t) => [
+        ...t,
+        {
+          id: `tool-response-${event.tool_call_id ?? Date.now()}`,
+          role: "system",
+          text: `Tool response: ${event.tool_name}${event.is_error ? " (error)" : ""}`,
         },
       ]);
     },
@@ -275,47 +318,71 @@ function CreatorCanvas({ voiceId }: { voiceId?: string }) {
     return "Done.";
   };
 
-  const finalizeForm = () => {
+  const finalizeForm = async () => {
     const d = draftRef.current;
+    if (isSavingRef.current) return "The form is already being created.";
     if (!d.title.trim()) return "Cannot finalize — no title set.";
     if (!d.fields.length) return "Cannot finalize — no questions added.";
 
+    isSavingRef.current = true;
     setSaving(true);
-    createForm({
-      title: d.title,
-      description: d.description || undefined,
-      fields: d.fields,
-      voiceId: voiceId || undefined,
-      greeting: d.greeting || undefined,
-      personality: d.personality || undefined,
-    })
-      .then((form) => {
-        traceRef.current?.span({
-          name: "api:create_form",
-          input: { title: d.title, fieldCount: d.fields.length },
-        }).end({ output: { slug: form.slug, id: form.id } });
-        setCreated({ slug: form.slug, title: form.title });
-        conversation.endSession();
-      })
-      .catch((err) => {
-        traceRef.current?.event({
-          name: "api:create_form:error",
-          level: "ERROR",
-          metadata: { error: err instanceof Error ? err.message : String(err) },
-        });
-        console.error("[sayso] Failed to create form:", err);
-        setTranscript((t) => [
-          ...t,
-          {
-            id: `create-error-${Date.now()}`,
-            role: "system",
-            text: "Failed to create form. Please try again.",
-          },
-        ]);
-      })
-      .finally(() => setSaving(false));
+    setTranscript((t) => [
+      ...t,
+      {
+        id: `create-start-${Date.now()}`,
+        role: "system",
+        text: "Creating form in database...",
+      },
+    ]);
+    try {
+      const form = await createForm({
+        title: d.title,
+        description: d.description || undefined,
+        fields: d.fields,
+        voiceId: voiceId || undefined,
+        greeting: d.greeting || undefined,
+        personality: d.personality || undefined,
+      });
 
-    return "Creating your form now...";
+      traceRef.current?.span({
+        name: "api:create_form",
+        input: { title: d.title, fieldCount: d.fields.length },
+      }).end({ output: { slug: form.slug, id: form.id } });
+
+      setCreated({ slug: form.slug, title: form.title });
+      setTranscript((t) => [
+        ...t,
+        {
+          id: `create-success-${Date.now()}`,
+          role: "system",
+          text: `Form created: ${form.slug}`,
+        },
+      ]);
+
+      await conversation.endSession();
+      return "Form created successfully. The conversation is ending now.";
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+
+      traceRef.current?.event({
+        name: "api:create_form:error",
+        level: "ERROR",
+        metadata: { error: message },
+      });
+      console.error("[sayso] Failed to create form:", err);
+      setTranscript((t) => [
+        ...t,
+        {
+          id: `create-error-${Date.now()}`,
+          role: "system",
+          text: `Failed to create form. ${message}`,
+        },
+      ]);
+      return `Form creation failed: ${message}. Tell the user briefly, then fix what is missing before trying again.`;
+    } finally {
+      isSavingRef.current = false;
+      setSaving(false);
+    }
   };
 
   useConversationClientTool("set_form_title", setFormTitle);
@@ -324,13 +391,15 @@ function CreatorCanvas({ voiceId }: { voiceId?: string }) {
   useConversationClientTool("remove_question", removeQuestion);
   useConversationClientTool("set_voice_config", setVoiceConfig);
   useConversationClientTool("finalize_form", finalizeForm);
+  useConversationClientTool("complete_form", finalizeForm);
+  useConversationClientTool("submit_form", finalizeForm);
 
   // ── Start / stop ──────────────────────────────────────────────────────────
 
   const handleStart = async () => {
     setStarting(true);
     try {
-      const signedUrl = await getSignedUrl();
+      const signedUrl = await getCreatorSignedUrl();
       conversation.startSession({
         signedUrl,
         overrides: {
@@ -682,11 +751,6 @@ function CreatorCanvas({ voiceId }: { voiceId?: string }) {
         </div>
       </section>
 
-      {/* Footer */}
-      <div className="relative z-10 mx-auto flex max-w-[1600px] items-center justify-between px-8 py-6 text-[10px] uppercase tracking-[0.28em] text-black/40">
-        <span>Powered by ElevenLabs</span>
-        <span className="hidden md:block">The voice is the form</span>
-      </div>
     </main>
   );
 }

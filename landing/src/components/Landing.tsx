@@ -211,24 +211,10 @@ export default function Landing({ appUrl }: { appUrl: string }) {
       {/* Hero */}
       <motion.section
         style={{ y: heroY, opacity: heroOpacity }}
-        className="relative mx-auto max-w-[1600px] px-8 pt-24 pb-32"
+        className="relative mx-auto max-w-[1600px] px-8 pt-16 pb-32"
       >
-        {/* Eyebrow */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2, duration: 0.8 }}
-          className="flex items-center gap-4"
-        >
-          <div className="h-px flex-1 bg-black/20" />
-          <span className="text-[11px] uppercase tracking-[0.32em] text-black/60">
-            ● Built with ElevenLabs v3 · Est. MMXXVI
-          </span>
-          <div className="h-px flex-1 bg-black/20" />
-        </motion.div>
-
         {/* H1 — oversized editorial with word reveal */}
-        <div className="mt-20">
+        <div className="mt-8">
           <h1 className="font-display text-[18vw] font-semibold leading-[0.85] tracking-[-0.04em] text-black md:text-[14vw]">
             <div className="overflow-hidden">
               <motion.div
@@ -294,7 +280,7 @@ export default function Landing({ appUrl }: { appUrl: string }) {
 
         {/* Live waveform strip */}
         <Reveal delay={1.3}>
-          <div className="mt-24 flex items-center gap-6">
+          <div className="mt-16 flex items-center gap-6">
             <span className="text-[10px] uppercase tracking-[0.28em] text-black/50">
               ● Listening
             </span>
@@ -413,10 +399,7 @@ export default function Landing({ appUrl }: { appUrl: string }) {
                 </div>
 
                 {/* Footer */}
-                <div className="flex items-center justify-between border-t border-black/10 px-8 py-4">
-                  <p className="text-[10px] uppercase tracking-[0.24em] text-black/40">
-                    Powered by ElevenLabs
-                  </p>
+                <div className="flex items-center justify-end border-t border-black/10 px-8 py-4">
                   <p className="font-display italic text-black/60">sayso</p>
                 </div>
               </motion.div>

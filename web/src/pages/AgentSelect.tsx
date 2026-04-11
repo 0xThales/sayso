@@ -218,11 +218,6 @@ export function AgentSelect() {
         </div>
       </section>
 
-      {/* Footer */}
-      <div className="relative z-10 mx-auto flex max-w-[1600px] items-center justify-between px-8 py-6 text-[10px] uppercase tracking-[0.28em] text-black/40">
-        <span>Powered by ElevenLabs</span>
-        <span className="hidden md:block">The voice is the form</span>
-      </div>
     </main>
   );
 }

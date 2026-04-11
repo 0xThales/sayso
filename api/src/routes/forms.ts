@@ -69,11 +69,24 @@ const forms = new Hono<Env>()
   }>();
 
   if (!body.title || !body.fields?.length) {
+    console.warn("[forms] Rejected create request: missing title or fields", {
+      userId,
+      title: body.title,
+      fieldCount: body.fields?.length ?? 0,
+    });
     return c.json({ error: "title and fields are required" }, 400);
   }
 
   const baseSlug = body.slug ? slugify(body.slug) : slugify(body.title);
   const slug = await ensureUniqueSlug(db, baseSlug);
+
+  console.log("[forms] Creating form", {
+    userId,
+    slug,
+    title: body.title,
+    fieldCount: body.fields.length,
+    voiceId: body.voiceId ?? null,
+  });
 
   const [form] = await db
     .insert(schema.forms)
@@ -90,6 +103,17 @@ const forms = new Hono<Env>()
       language: body.language ?? "en",
     })
     .returning();
+
+  if (!form) {
+    console.error("[forms] Insert returned no row", { userId, slug, title: body.title });
+    return c.json({ error: "Failed to create form" }, 500);
+  }
+
+  console.log("[forms] Created form", {
+    id: form.id,
+    slug: form.slug,
+    userId: form.userId,
+  });
 
   return c.json(form, 201);
 })

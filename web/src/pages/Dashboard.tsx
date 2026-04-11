@@ -70,19 +70,6 @@ export function Dashboard() {
 
       {/* Editorial header */}
       <section className="relative mx-auto max-w-[1600px] px-8 pt-24 pb-16">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2, duration: 0.8 }}
-          className="flex items-center gap-4"
-        >
-          <div className="h-px flex-1 bg-black/20" />
-          <span className="text-[11px] uppercase tracking-[0.32em] text-black/60">
-            § Dashboard · Est. MMXXVI
-          </span>
-          <div className="h-px flex-1 bg-black/20" />
-        </motion.div>
-
         <div className="mt-16">
           <h1 className="font-display text-[14vw] font-semibold leading-[0.85] tracking-[-0.04em] md:text-[11vw] lg:text-[10rem]">
             <div className="overflow-hidden">
@@ -362,10 +349,7 @@ export function Dashboard() {
 
       {/* Footer */}
       <footer className="relative border-t border-black/10">
-        <div className="mx-auto flex max-w-[1600px] items-center justify-between px-8 py-8">
-          <p className="text-[10px] uppercase tracking-[0.28em] text-black/40">
-            Powered by ElevenLabs · The voice is the form
-          </p>
+        <div className="mx-auto flex max-w-[1600px] items-center justify-end px-8 py-8">
           <Link
             to="/"
             className="text-[10px] uppercase tracking-[0.28em] text-black/60 transition hover:text-black"

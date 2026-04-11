@@ -136,10 +136,7 @@ export function ThankYou({
 
       {/* Footer */}
       <footer className="relative border-t border-black/10">
-        <div className="mx-auto flex max-w-[1600px] items-center justify-between px-8 py-8">
-          <p className="text-[10px] uppercase tracking-[0.28em] text-black/40">
-            Powered by ElevenLabs · The voice is the form
-          </p>
+        <div className="mx-auto flex max-w-[1600px] items-center justify-end px-8 py-8">
           <Link
             to="/"
             className="text-[10px] uppercase tracking-[0.28em] text-black/60 transition hover:text-black"

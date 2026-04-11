@@ -6,7 +6,7 @@ import {
   useConversationClientTool,
 } from "@elevenlabs/react";
 import { motion, AnimatePresence } from "framer-motion";
-import { getSignedUrl } from "@/lib/elevenlabs";
+import { getResponseSignedUrl } from "@/lib/elevenlabs";
 import {
   createResponse,
   fetchForm,
@@ -466,7 +466,7 @@ function VoiceFormCanvas({ form }: { form: Form }) {
   const handleStart = async () => {
     setStarting(true);
     try {
-      const signedUrl = await getSignedUrl();
+      const signedUrl = await getResponseSignedUrl();
       conversation.startSession({
         signedUrl,
         overrides: {
@@ -572,7 +572,7 @@ function VoiceFormCanvas({ form }: { form: Form }) {
         >
           <div className="h-px flex-1 bg-black/20" />
           <span className="text-[11px] uppercase tracking-[0.32em] text-black/60">
-            § Voice intake · {form.fields.length} questions · Est. MMXXVI
+            § Voice intake · {form.fields.length} questions
           </span>
           <div className="h-px flex-1 bg-black/20" />
         </motion.div>
@@ -1121,10 +1121,7 @@ function VoiceFormCanvas({ form }: { form: Form }) {
 
       {/* Footer */}
       <footer className="relative border-t border-black/10">
-        <div className="mx-auto flex max-w-[1600px] items-center justify-between px-8 py-8">
-          <p className="text-[10px] uppercase tracking-[0.28em] text-black/40">
-            Powered by ElevenLabs · The voice is the form
-          </p>
+        <div className="mx-auto flex max-w-[1600px] items-center justify-end px-8 py-8">
           <Link
             to="/"
             className="text-[10px] uppercase tracking-[0.28em] text-black/60 transition hover:text-black"
