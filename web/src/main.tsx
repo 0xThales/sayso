@@ -1,6 +1,6 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { BrowserRouter, Routes, Route } from "react-router";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router";
 import {
   ClerkProvider,
   SignIn,
@@ -10,7 +10,6 @@ import {
   RedirectToSignIn,
 } from "@clerk/clerk-react";
 import App from "./App";
-import { Landing } from "./pages/Landing";
 import { FormView } from "./pages/FormView";
 import { Dashboard } from "./pages/Dashboard";
 import { FormEditor } from "./pages/FormEditor";
@@ -47,7 +46,7 @@ createRoot(document.getElementById("root")!).render(
       <BrowserRouter>
         <Routes>
           <Route element={<App />}>
-            <Route index element={<Landing />} />
+            <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="f/:slug" element={<FormView />} />
             <Route
               path="sign-in/*"

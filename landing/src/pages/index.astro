@@ -1,0 +1,49 @@
+---
+import Landing from "../components/Landing";
+
+const appUrl = import.meta.env.PUBLIC_APP_URL || "http://localhost:5173";
+const title = "Sayso — Forms that listen";
+const description =
+  "A voice-first form builder. Respondents talk to an AI agent instead of typing. Structured data out, natural conversation in.";
+const url = Astro.url.origin;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- SEO -->
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={url} />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={url} />
+    <meta property="og:site_name" content="Sayso" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,400&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body class="font-body" style="color: #231f1b;">
+    <Landing client:load appUrl={appUrl} />
+  </body>
+</html>
+
+<style is:global>
+  @import "../styles/global.css";
+</style>
