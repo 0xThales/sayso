@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router";
+import { QRCodeCanvas } from "qrcode.react";
 import {
   fetchForm,
   fetchResponses,
@@ -171,6 +172,94 @@ function ResponseCard({
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Share Tab ───────────────────────────────────────────────────────────────
+
+function ShareTab({
+  shareUrl,
+  slug,
+  copied,
+  setCopied,
+}: {
+  shareUrl: string;
+  slug: string;
+  copied: boolean;
+  setCopied: (v: boolean) => void;
+}) {
+  const qrRef = useRef<HTMLDivElement>(null);
+
+  function downloadQR() {
+    const canvas = qrRef.current?.querySelector("canvas");
+    if (!canvas) return;
+    const url = canvas.toDataURL("image/png");
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${slug}-qr.png`;
+    a.click();
+  }
+
+  return (
+    <div className="mt-8">
+      <p className="text-sm text-stone-500">
+        Share this link with respondents. They'll talk to a voice agent
+        that walks them through your form.
+      </p>
+      <div className="mt-4 flex items-center gap-3">
+        <code className="flex-1 rounded-xl border border-stone-200 bg-white px-4 py-3 text-sm">
+          {shareUrl}
+        </code>
+        <button
+          onClick={() => {
+            navigator.clipboard.writeText(shareUrl);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+          }}
+          className={`rounded-full border px-4 py-2.5 text-sm transition ${
+            copied
+              ? "border-emerald-200 bg-emerald-50 text-emerald-600"
+              : "border-stone-200 hover:bg-stone-50"
+          }`}
+        >
+          {copied ? "Copied!" : "Copy"}
+        </button>
+      </div>
+
+      {/* QR Code */}
+      <div className="mt-8 flex flex-col items-center gap-4 rounded-2xl border border-stone-200 bg-white p-8">
+        <div ref={qrRef}>
+          <QRCodeCanvas
+            value={shareUrl}
+            size={200}
+            marginSize={2}
+            level="M"
+          />
+        </div>
+        <p className="text-sm text-stone-400">
+          Scan to open the form on any device
+        </p>
+        <button
+          onClick={downloadQR}
+          className="inline-flex items-center gap-2 rounded-full border border-stone-200 px-4 py-2 text-sm transition hover:bg-stone-50"
+        >
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V3" />
+          </svg>
+          Download QR
+        </button>
+      </div>
+
+      <div className="mt-6">
+        <Link
+          to={`/f/${slug}`}
+          target="_blank"
+          className="inline-flex items-center gap-2 text-sm font-medium text-stone-700 transition hover:text-black"
+        >
+          Open form &rarr;
+        </Link>
+      </div>
     </div>
   );
 }
@@ -387,40 +476,7 @@ export function FormDetail() {
 
         {/* Share tab */}
         {tab === "share" && (
-          <div className="mt-8">
-            <p className="text-sm text-stone-500">
-              Share this link with respondents. They'll talk to a voice agent
-              that walks them through your form.
-            </p>
-            <div className="mt-4 flex items-center gap-3">
-              <code className="flex-1 rounded-xl border border-stone-200 bg-white px-4 py-3 text-sm">
-                {shareUrl}
-              </code>
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(shareUrl);
-                  setCopied(true);
-                  setTimeout(() => setCopied(false), 2000);
-                }}
-                className={`rounded-full border px-4 py-2.5 text-sm transition ${
-                  copied
-                    ? "border-emerald-200 bg-emerald-50 text-emerald-600"
-                    : "border-stone-200 hover:bg-stone-50"
-                }`}
-              >
-                {copied ? "Copied!" : "Copy"}
-              </button>
-            </div>
-            <div className="mt-6">
-              <Link
-                to={`/f/${form.slug}`}
-                target="_blank"
-                className="inline-flex items-center gap-2 text-sm font-medium text-stone-700 transition hover:text-black"
-              >
-                Open form &rarr;
-              </Link>
-            </div>
-          </div>
+          <ShareTab shareUrl={shareUrl} slug={form.slug} copied={copied} setCopied={setCopied} />
         )}
       </main>
     </div>
