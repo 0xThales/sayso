@@ -99,9 +99,9 @@ function formatResult(
   };
 }
 
-const elevenlabs = new Hono();
+const elevenlabs = new Hono()
 
-elevenlabs.get("/token", async (c) => {
+.get("/token", async (c) => {
   try {
     const result = formatResult(
       await handleSignedUrlRequest(
@@ -124,9 +124,9 @@ elevenlabs.get("/token", async (c) => {
       error instanceof Error ? error.message : "Unexpected ElevenLabs error";
     return c.json({ error: message }, 500);
   }
-});
+})
 
-elevenlabs.post("/conversation/signed-url", async (c) => {
+.post("/conversation/signed-url", async (c) => {
   try {
     const body = (await c.req.json().catch(() => ({}))) as {
       agentId?: string;

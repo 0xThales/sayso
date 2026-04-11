@@ -12,9 +12,10 @@ import {
   fetchForm,
   FormNotFoundError,
   updateResponse,
+  type Form,
+  type FormResponse,
 } from "@/lib/api";
 import { buildAgentFirstMessage, buildAgentPrompt } from "@/lib/prompt";
-import type { Form, FormResponse } from "@/types/forms";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 

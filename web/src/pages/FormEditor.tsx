@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router";
-import { createForm, fetchForm, updateForm } from "@/lib/api";
-import type { FieldType, FormField } from "@/types/forms";
+import { createForm, fetchForm, updateForm, type FieldType, type FormField } from "@/lib/api";
 
 const FIELD_TYPES: { value: FieldType; label: string }[] = [
   { value: "text", label: "Text" },

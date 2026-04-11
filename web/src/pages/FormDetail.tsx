@@ -5,8 +5,10 @@ import {
   fetchResponses,
   deleteForm,
   subscribeToResponsesStream,
+  type Form,
+  type FormField,
+  type FormResponse,
 } from "@/lib/api";
-import type { Form, FormField, FormResponse } from "@/types/forms";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 

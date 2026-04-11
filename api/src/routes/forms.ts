@@ -8,8 +8,6 @@ import { clerkAuth } from "../middleware/auth.js";
 
 type Env = { Variables: { db: Db; userId: string } };
 
-const forms = new Hono<Env>();
-
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function slugify(text: string): string {
@@ -35,9 +33,12 @@ async function ensureUniqueSlug(db: Db, base: string): Promise<string> {
   }
 }
 
-// ── GET /forms/:slug — Public ──────────────────────────────────────────────
+// ── Routes (chained for Hono RPC type inference) ─────────────────────────────
 
-forms.get("/:slug", async (c) => {
+const forms = new Hono<Env>()
+
+// GET /forms/:slug — Public
+.get("/:slug", async (c) => {
   const db = c.get("db");
   const slug = c.req.param("slug");
 
@@ -49,11 +50,10 @@ forms.get("/:slug", async (c) => {
 
   if (!form) return c.json({ error: "Form not found" }, 404);
   return c.json(form);
-});
+})
 
-// ── POST /forms — Create (authenticated) ────────────────────────────────────
-
-forms.post("/", clerkAuth, async (c) => {
+// POST /forms — Create (authenticated)
+.post("/", clerkAuth, async (c) => {
   const db = c.get("db");
   const userId = c.get("userId");
   const body = await c.req.json<{
@@ -92,11 +92,10 @@ forms.post("/", clerkAuth, async (c) => {
     .returning();
 
   return c.json(form, 201);
-});
+})
 
-// ── GET /forms — List user's forms (authenticated) ─────────────────────────
-
-forms.get("/", clerkAuth, async (c) => {
+// GET /forms — List user's forms (authenticated)
+.get("/", clerkAuth, async (c) => {
   const db = c.get("db");
   const userId = c.get("userId");
 
@@ -120,11 +119,10 @@ forms.get("/", clerkAuth, async (c) => {
   }));
 
   return c.json(result);
-});
+})
 
-// ── PUT /forms/:id — Update (owner only) ───────────────────────────────────
-
-forms.put("/:id", clerkAuth, async (c) => {
+// PUT /forms/:id — Update (owner only)
+.put("/:id", clerkAuth, async (c) => {
   const db = c.get("db");
   const userId = c.get("userId");
   const id = c.req.param("id");
@@ -147,11 +145,10 @@ forms.put("/:id", clerkAuth, async (c) => {
 
   if (!updated) return c.json({ error: "Form not found" }, 404);
   return c.json(updated);
-});
+})
 
-// ── DELETE /forms/:id — Delete (owner only) ────────────────────────────────
-
-forms.delete("/:id", clerkAuth, async (c) => {
+// DELETE /forms/:id — Delete (owner only)
+.delete("/:id", clerkAuth, async (c) => {
   const db = c.get("db");
   const userId = c.get("userId");
   const id = c.req.param("id");
