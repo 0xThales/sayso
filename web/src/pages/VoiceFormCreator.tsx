@@ -9,6 +9,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import { getSignedUrl } from "@/lib/elevenlabs";
 import { createForm, type FieldType, type FormField } from "@/lib/api";
 import { buildFormCreatorPrompt } from "@/lib/prompt";
+import {
+  traceSession,
+  flushTracing,
+  type LangfuseTrace,
+} from "@/lib/langfuse";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -243,6 +248,7 @@ function CreatorCanvas() {
   const [starting, setStarting] = useState(false);
   const [saving, setSaving] = useState(false);
   const draftRef = useRef<FormDraft>(emptyDraft());
+  const traceRef = useRef<LangfuseTrace | null>(null);
   const transcriptEndRef = useRef<HTMLDivElement>(null);
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
 
@@ -254,6 +260,11 @@ function CreatorCanvas() {
 
   const conversation = useConversation({
     onConnect: ({ conversationId }) => {
+      traceRef.current = traceSession({
+        sessionType: "form_creation",
+        conversationId,
+      });
+      traceRef.current?.event({ name: "session:connected", metadata: { conversationId } });
       setTranscript((t) => [
         ...t,
         {
@@ -264,6 +275,9 @@ function CreatorCanvas() {
       ]);
     },
     onDisconnect: () => {
+      traceRef.current?.update({ output: draftRef.current });
+      traceRef.current?.event({ name: "session:disconnected" });
+      flushTracing();
       setTranscript((t) => [
         ...t,
         {
@@ -273,7 +287,13 @@ function CreatorCanvas() {
         },
       ]);
     },
-    onError: (message) => {
+    onError: (message, context) => {
+      console.error("[sayso] Creator session error:", message, context);
+      traceRef.current?.event({
+        name: "session:error",
+        level: "ERROR",
+        metadata: { message, context },
+      });
       setTranscript((t) => [
         ...t,
         {
@@ -292,6 +312,23 @@ function CreatorCanvas() {
           id: `${event.role}-${event.event_id ?? Date.now()}`,
           role: event.role,
           text,
+        },
+      ]);
+    },
+    onUnhandledClientToolCall: (toolCall) => {
+      console.error("[sayso] UNHANDLED creator tool:", toolCall.tool_name);
+      traceRef.current?.event({
+        name: "tool:unhandled",
+        level: "ERROR",
+        input: toolCall.parameters,
+        metadata: { toolName: toolCall.tool_name },
+      });
+      setTranscript((t) => [
+        ...t,
+        {
+          id: `unhandled-tool-${Date.now()}`,
+          role: "system",
+          text: `Unhandled tool: "${toolCall.tool_name}" (params: ${JSON.stringify(toolCall.parameters)})`,
         },
       ]);
     },
@@ -315,6 +352,8 @@ function CreatorCanvas() {
   // ── Client tools ──────────────────────────────────────────────────────────
 
   const setFormTitle = (params: { title?: string; description?: string }) => {
+    traceRef.current?.span({ name: "tool:set_form_title", input: params })
+      .end({ output: { title: (params.title ?? "").trim() } });
     const title = (params.title ?? "").trim();
     if (!title) return "No title provided.";
     updateDraft({ title, description: (params.description ?? "").trim() });
@@ -361,6 +400,8 @@ function CreatorCanvas() {
     }
 
     updateFields((prev) => [...prev, field]);
+    traceRef.current?.span({ name: "tool:add_question", input: params })
+      .end({ output: field });
     return "Done.";
   };
 
@@ -372,6 +413,7 @@ function CreatorCanvas() {
     options?: string[];
     description?: string;
   }) => {
+    traceRef.current?.span({ name: "tool:update_question", input: params }).end();
     const idx = params.index ?? -1;
     if (idx < 0 || idx >= draftRef.current.fields.length)
       return "Invalid question index.";
@@ -392,6 +434,7 @@ function CreatorCanvas() {
   };
 
   const removeQuestion = (params: { index?: number }) => {
+    traceRef.current?.span({ name: "tool:remove_question", input: params }).end();
     const idx = params.index ?? -1;
     if (idx < 0 || idx >= draftRef.current.fields.length)
       return "Invalid question index.";
@@ -403,6 +446,7 @@ function CreatorCanvas() {
     greeting?: string;
     personality?: string;
   }) => {
+    traceRef.current?.span({ name: "tool:set_voice_config", input: params }).end();
     const patch: Partial<FormDraft> = {};
     if (params.greeting) patch.greeting = params.greeting.trim();
     if (params.personality) patch.personality = params.personality.trim();
@@ -424,11 +468,20 @@ function CreatorCanvas() {
       personality: d.personality || undefined,
     })
       .then((form) => {
+        traceRef.current?.span({
+          name: "api:create_form",
+          input: { title: d.title, fieldCount: d.fields.length },
+        }).end({ output: { slug: form.slug, id: form.id } });
         setCreated({ slug: form.slug, title: form.title });
         conversation.endSession();
       })
       .catch((err) => {
-        console.error("Failed to create form:", err);
+        traceRef.current?.event({
+          name: "api:create_form:error",
+          level: "ERROR",
+          metadata: { error: err instanceof Error ? err.message : String(err) },
+        });
+        console.error("[sayso] Failed to create form:", err);
         setTranscript((t) => [
           ...t,
           {

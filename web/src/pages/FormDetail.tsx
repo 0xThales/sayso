@@ -10,6 +10,38 @@ import {
   type FormResponse,
 } from "@/lib/api";
 
+// ── CSV Export ──────────────────────────────────────────────────────────────
+
+function escapeCSV(value: unknown): string {
+  const str = value == null ? "" : String(value);
+  if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+}
+
+function downloadCSV(form: Form, responses: FormResponse[]) {
+  const fieldHeaders = form.fields.map((f) => f.label);
+  const headers = [...fieldHeaders, "Date", "Duration (s)", "Completed"];
+
+  const rows = responses.map((r) => {
+    const fieldValues = form.fields.map((f) => escapeCSV(r.answers[f.id]));
+    const date = new Date(r.createdAt).toISOString();
+    const duration = r.duration ?? "";
+    const completed = r.completed ? "Yes" : "No";
+    return [...fieldValues, date, duration, completed].join(",");
+  });
+
+  const csv = [headers.map(escapeCSV).join(","), ...rows].join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${form.slug}-responses.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function shortLabel(field: FormField): string {
@@ -323,6 +355,19 @@ export function FormDetail() {
         {/* Responses tab */}
         {tab === "responses" && (
           <div className="mt-6 space-y-4">
+            {responses.length > 0 && (
+              <div className="flex justify-end">
+                <button
+                  onClick={() => downloadCSV(form, responses)}
+                  className="inline-flex items-center gap-2 rounded-full border border-stone-200 px-4 py-2 text-sm transition hover:bg-stone-50"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V3" />
+                  </svg>
+                  Export CSV
+                </button>
+              </div>
+            )}
             {responses.length === 0 ? (
               <div className="py-16 text-center text-stone-400">
                 No responses yet. Share your form to start collecting answers.
