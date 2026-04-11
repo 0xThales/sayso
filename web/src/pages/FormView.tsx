@@ -16,6 +16,11 @@ import {
   type FormResponse,
 } from "@/lib/api";
 import { buildAgentFirstMessage, buildAgentPrompt } from "@/lib/prompt";
+import {
+  traceSession,
+  flushTracing,
+  type LangfuseTrace,
+} from "@/lib/langfuse";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -417,6 +422,7 @@ function VoiceFormCanvas({ form }: { form: Form }) {
   const saveChainRef = useRef<Promise<FormResponse | null>>(Promise.resolve(null));
   const isSubmittingRef = useRef(false);
   const isCompletedRef = useRef(false);
+  const traceRef = useRef<LangfuseTrace | null>(null);
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([
     {
       id: "system-ready",
@@ -444,6 +450,14 @@ function VoiceFormCanvas({ form }: { form: Form }) {
   const conversation = useConversation({
     onConnect: ({ conversationId }) => {
       startTimeRef.current = Date.now();
+      traceRef.current = traceSession({
+        sessionType: "form_response",
+        conversationId,
+        formSlug: form.slug,
+        formTitle: form.title,
+        formId: form.id,
+      });
+      traceRef.current?.event({ name: "session:connected", metadata: { conversationId } });
       setTranscript((t) => [
         ...t,
         {
@@ -454,6 +468,9 @@ function VoiceFormCanvas({ form }: { form: Form }) {
       ]);
     },
     onDisconnect: () => {
+      traceRef.current?.update({ output: answersRef.current });
+      traceRef.current?.event({ name: "session:disconnected" });
+      flushTracing();
       setTranscript((t) => [
         ...t,
         {
@@ -463,7 +480,13 @@ function VoiceFormCanvas({ form }: { form: Form }) {
         },
       ]);
     },
-    onError: (message) => {
+    onError: (message, context) => {
+      console.error("[sayso] Session error:", message, context);
+      traceRef.current?.event({
+        name: "session:error",
+        level: "ERROR",
+        metadata: { message, context },
+      });
       setTranscript((t) => [
         ...t,
         { id: `error-${Date.now()}`, role: "system", text: `Error: ${message}` },
@@ -478,6 +501,23 @@ function VoiceFormCanvas({ form }: { form: Form }) {
           id: `${event.role}-${event.event_id ?? Date.now()}`,
           role: event.role,
           text,
+        },
+      ]);
+    },
+    onUnhandledClientToolCall: (toolCall) => {
+      console.error("[sayso] UNHANDLED tool call:", toolCall.tool_name);
+      traceRef.current?.event({
+        name: "tool:unhandled",
+        level: "ERROR",
+        input: toolCall.parameters,
+        metadata: { toolName: toolCall.tool_name },
+      });
+      setTranscript((t) => [
+        ...t,
+        {
+          id: `unhandled-tool-${Date.now()}`,
+          role: "system",
+          text: `Unhandled tool: "${toolCall.tool_name}" (params: ${JSON.stringify(toolCall.parameters)})`,
         },
       ]);
     },
@@ -505,23 +545,44 @@ function VoiceFormCanvas({ form }: { form: Form }) {
     const queuedSave = saveChainRef.current
       .catch(() => null)
       .then(async () => {
-        const response = responseIdRef.current
-          ? await updateResponse(
-              slugRef.current,
-              responseIdRef.current,
-              answersSnapshot,
-              {
+        const isUpdate = !!responseIdRef.current;
+        const spanName = isUpdate ? "api:update_response" : "api:create_response";
+        const span = traceRef.current?.span({
+          name: spanName,
+          input: {
+            slug: slugRef.current,
+            responseId: responseIdRef.current,
+            answers: answersSnapshot,
+            completed: completedFlag,
+          },
+        });
+
+        try {
+          const response = responseIdRef.current
+            ? await updateResponse(
+                slugRef.current,
+                responseIdRef.current,
+                answersSnapshot,
+                {
+                  completed: completedFlag,
+                  duration: getDurationSeconds(),
+                },
+              )
+            : await createResponse(slugRef.current, answersSnapshot, {
                 completed: completedFlag,
                 duration: getDurationSeconds(),
-              },
-            )
-          : await createResponse(slugRef.current, answersSnapshot, {
-              completed: completedFlag,
-              duration: getDurationSeconds(),
-            });
+              });
 
-        responseIdRef.current = response.id;
-        return response;
+          responseIdRef.current = response.id;
+          span?.end({ output: { id: response.id, completed: response.completed } });
+          return response;
+        } catch (error) {
+          span?.end({
+            output: error instanceof Error ? error.message : String(error),
+            level: "ERROR",
+          });
+          throw error;
+        }
       });
 
     saveChainRef.current = queuedSave;
@@ -545,22 +606,45 @@ function VoiceFormCanvas({ form }: { form: Form }) {
     const resolvedFieldId = resolveFieldId(form, params);
     const value = normalizeAnswerValue(params.value ?? params.answer);
     const fieldId = resolvedFieldId ?? currentField?.id ?? null;
+
+    const resolution = {
+      resolvedFieldId,
+      fallbackFieldId: currentField?.id ?? null,
+      finalFieldId: fieldId,
+      normalizedValue: value,
+      formFieldIds: form.fields.map((f) => f.id),
+    };
+
     if (!fieldId || !value) {
-      console.warn("Rejected save_form_answer call due to incomplete payload", params);
+      traceRef.current?.event({
+        name: "tool:save_answer:rejected",
+        level: "WARNING",
+        input: params,
+        output: "No answer saved — incomplete payload.",
+        metadata: resolution,
+      });
       return "No answer saved — incomplete payload.";
     }
 
     if (!resolvedFieldId && currentField) {
-      console.warn(
-        `Falling back to current field "${currentField.id}" for tool payload`,
-        params,
-      );
+      traceRef.current?.event({
+        name: "tool:save_answer:fallback",
+        level: "WARNING",
+        input: params,
+        metadata: { ...resolution, reason: "Used currentField as fallback" },
+      });
     }
 
     const nextAnswers = {
       ...answersRef.current,
       [fieldId]: value,
     };
+
+    traceRef.current?.span({
+      name: "tool:save_answer",
+      input: params,
+      metadata: resolution,
+    }).end({ output: { fieldId, value } });
 
     answersRef.current = nextAnswers;
     setAnswers(nextAnswers);
@@ -615,10 +699,21 @@ function VoiceFormCanvas({ form }: { form: Form }) {
 
     if (missingRequired.length > 0) {
       const nextField = missingRequired[0]!;
+      traceRef.current?.event({
+        name: "tool:complete_form:rejected",
+        level: "WARNING",
+        input: { currentAnswers: answersRef.current },
+        metadata: { missingFields: missingRequired.map((f) => f.id) },
+      });
       return `The form is not complete yet. Ask the user for the required field "${nextField.label}" (field id: ${nextField.id}).`;
     }
 
     const answersToSubmit = answersRef.current;
+
+    traceRef.current?.span({
+      name: "tool:complete_form",
+      input: { answers: answersToSubmit, fieldCount: form.fields.length },
+    }).end();
 
     isSubmittingRef.current = true;
     setSubmitting(true);
