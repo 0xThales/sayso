@@ -78,100 +78,47 @@ function formatDuration(seconds?: number | null): string | null {
 function ResponseCard({
   response,
   fields,
-  index,
 }: {
   response: FormResponse;
   fields: FormField[];
   index: number;
 }) {
-  const [expanded, setExpanded] = useState(false);
   const answered = fields.filter((f) => response.answers[f.id] != null && response.answers[f.id] !== "");
   const duration = formatDuration(response.duration);
 
-  // Show first 4 answered fields in collapsed, all when expanded
-  const visible = expanded ? answered : answered.slice(0, 4);
-  const hasMore = answered.length > 4;
-
-  // Find a "name" field for the card title
   const nameField = fields.find(
     (f) => f.id === "name" || f.id === "full_name" || f.type === "text",
   );
-  const title = nameField ? String(response.answers[nameField.id] ?? `Response ${index}`) : `Response ${index}`;
+  const title = nameField ? String(response.answers[nameField.id] ?? "Unnamed") : "Unnamed";
 
   return (
-    <div className="rounded-2xl border border-stone-200 bg-white transition hover:border-stone-300">
-      <button
-        type="button"
-        onClick={() => setExpanded(!expanded)}
-        className="flex w-full items-center justify-between px-6 py-4 text-left"
-      >
-        <div className="min-w-0">
-          <div className="flex items-center gap-3">
-            <span className="font-display text-lg font-semibold tracking-tight">
-              {title}
-            </span>
-            <span className="rounded-full bg-stone-100 px-2.5 py-0.5 text-xs text-stone-500">
-              {answered.length}/{fields.length} answered
-            </span>
-            <span
-              className={`rounded-full px-2.5 py-0.5 text-xs ${
-                response.completed
-                  ? "bg-emerald-50 text-emerald-600"
-                  : "bg-amber-50 text-amber-700"
-              }`}
-            >
-              {response.completed ? "Complete" : "Draft"}
-            </span>
-          </div>
-          <div className="mt-0.5 flex gap-3 text-xs text-stone-400">
-            <span>{formatDate(response.createdAt)}</span>
-            {duration && <span>&middot; {duration}</span>}
-          </div>
-        </div>
-        <svg
-          className={`h-5 w-5 shrink-0 text-stone-400 transition-transform ${expanded ? "rotate-180" : ""}`}
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={2}
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-        </svg>
-      </button>
+    <div className="border-l-[3px] border-coral pl-6">
+      <div className="mb-7">
+        <h3 className="font-display text-2xl font-semibold tracking-tight">
+          {title}
+        </h3>
+        <p className="mt-1 text-[13px] text-stone-400">
+          {formatDate(response.createdAt)}
+          {duration && <> &middot; {duration}</>}
+          {" "}&middot; {response.completed ? "Complete" : "Draft"}
+        </p>
+      </div>
 
-      {/* Answer grid */}
-      <div
-        className={`grid gap-x-6 gap-y-4 border-t border-stone-100 px-6 py-5 ${
-          expanded ? "sm:grid-cols-2" : "sm:grid-cols-2"
-        }`}
-      >
-        {visible.map((field) => {
+      <div className="flex flex-col gap-6">
+        {answered.map((field) => {
           const value = response.answers[field.id];
           return (
-            <div key={field.id} className="min-w-0">
-              <dt className="text-xs font-medium uppercase tracking-wide text-stone-400">
+            <div key={field.id}>
+              <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-stone-400">
                 {shortLabel(field)}
-              </dt>
-              <dd className="mt-0.5 text-sm leading-relaxed text-stone-900">
+              </p>
+              <p className="mt-1.5 text-[15px] leading-relaxed text-stone-900">
                 {String(value)}
-              </dd>
+              </p>
             </div>
           );
         })}
       </div>
-
-      {/* Expand toggle */}
-      {hasMore && !expanded && (
-        <div className="border-t border-stone-100 px-6 py-3">
-          <button
-            type="button"
-            onClick={() => setExpanded(true)}
-            className="text-xs font-medium text-stone-400 transition hover:text-stone-700"
-          >
-            +{answered.length - 4} more answers
-          </button>
-        </div>
-      )}
     </div>
   );
 }
@@ -443,7 +390,7 @@ export function FormDetail() {
 
         {/* Responses tab */}
         {tab === "responses" && (
-          <div className="mt-6 space-y-4">
+          <div className="mt-6 divide-y divide-stone-200 space-y-0">
             {responses.length > 0 && (
               <div className="flex justify-end">
                 <button
@@ -463,12 +410,13 @@ export function FormDetail() {
               </div>
             ) : (
               responses.map((r, i) => (
-                <ResponseCard
-                  key={r.id}
-                  response={r}
-                  fields={form.fields}
-                  index={responses.length - i}
-                />
+                <div key={r.id} className="py-10 first:pt-0">
+                  <ResponseCard
+                    response={r}
+                    fields={form.fields}
+                    index={responses.length - i}
+                  />
+                </div>
               ))
             )}
           </div>
