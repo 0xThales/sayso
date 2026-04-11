@@ -8,6 +8,7 @@
     "dev": "turbo dev",
     "dev:web": "turbo dev --filter=web",
     "dev:api": "turbo dev --filter=api",
+    "dev:landing": "turbo dev --filter=landing",
     "build": "turbo build",
     "type-check": "turbo type-check",
     "clean": "rm -rf node_modules web/node_modules api/node_modules .turbo",
