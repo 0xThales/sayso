@@ -7,6 +7,7 @@ import { createDb, type Db } from "./db/index.js";
 import { elevenlabs } from "./routes/elevenlabs.js";
 import { forms } from "./routes/forms.js";
 import { responses } from "./routes/responses.js";
+import { webhooks } from "./routes/webhooks.js";
 
 type Env = { Variables: { db: Db } };
 
@@ -47,7 +48,8 @@ const api = new Hono<Env>()
   .use("/forms/*", requireDb)
   .route("/elevenlabs", elevenlabs)
   .route("/forms", forms)
-  .route("/forms", responses);
+  .route("/forms", responses)
+  .route("/webhooks", webhooks);
 
 const app = new Hono().route("/api", api);
 
