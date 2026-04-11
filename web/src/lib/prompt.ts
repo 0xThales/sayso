@@ -1,4 +1,4 @@
-import type { Form, FormField } from "@/types/forms";
+import type { Form, FormField } from "@/lib/api";
 
 function normalizeText(text: string): string {
   return text

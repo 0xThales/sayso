@@ -7,9 +7,8 @@ import {
 } from "@elevenlabs/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getSignedUrl } from "@/lib/elevenlabs";
-import { createForm } from "@/lib/api";
+import { createForm, type FieldType, type FormField } from "@/lib/api";
 import { buildFormCreatorPrompt } from "@/lib/prompt";
-import type { FieldType, FormField } from "@/types/forms";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 

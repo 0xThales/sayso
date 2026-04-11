@@ -1,8 +1,9 @@
-import type { Form, FormField, FormResponse } from "@/types/forms";
+import { hc } from "hono/client";
+import type { AppType } from "@api/index";
+
+// ── Client setup ───────────────────────────────────────────────────────────
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "";
-
-// ── Auth helper ────────────────────────────────────────────────────────────
 
 let _getToken: (() => Promise<string | null>) | null = null;
 
@@ -11,34 +12,47 @@ export function setTokenGetter(fn: () => Promise<string | null>) {
 }
 
 async function authHeaders(): Promise<Record<string, string>> {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (_getToken) {
-    const token = await _getToken();
-    if (token) headers["Authorization"] = `Bearer ${token}`;
-  }
-  return headers;
+  if (!_getToken) return {};
+  const token = await _getToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
 }
+
+function client() {
+  return hc<AppType>(API_BASE);
+}
+
+// ── Type re-exports (inferred from the API, no manual duplication) ─────────
+
+// Infer types from the API response — no manual duplication
+type InferJson<T> = T extends { json(): Promise<infer U> } ? U : never;
+
+type FormsListResponse = InferJson<Awaited<ReturnType<ReturnType<typeof client>["api"]["forms"]["$get"]>>>;
+type FormGetResponse = InferJson<Awaited<ReturnType<ReturnType<typeof client>["api"]["forms"][":slug"]["$get"]>>>;
+type ResponsesListResponse = InferJson<Awaited<ReturnType<ReturnType<typeof client>["api"]["forms"][":slug"]["responses"]["$get"]>>>;
+
+export type FormSummary = Extract<FormsListResponse, unknown[]>[number];
+export type Form = Extract<FormGetResponse, { slug: string }>;
+export type FormResponse = Extract<ResponsesListResponse, unknown[]>[number];
+
+// Re-export field types from the API schema for pages that need them
+export type { FormFieldDef as FormField, FieldType } from "@api/db/schema";
 
 // ── Form CRUD ───────────────────────────────────────────────────────────────
 
-export interface FormSummary {
-  id: string;
-  slug: string;
-  title: string;
-  description: string;
-  fieldCount: number;
-  language: string;
-  createdAt: string;
-}
-
-export async function fetchForms(): Promise<FormSummary[]> {
-  const res = await fetch(`${API_BASE}/api/forms`, { headers: await authHeaders() });
+export async function fetchForms() {
+  const c = client();
+  const res = await c.api.forms.$get(undefined as never, {
+    headers: await authHeaders(),
+  });
   if (!res.ok) throw new Error(`Failed to load forms: ${res.statusText}`);
   return res.json();
 }
 
-export async function fetchForm(slug: string): Promise<Form> {
-  const res = await fetch(`${API_BASE}/api/forms/${slug}`);
+export async function fetchForm(slug: string) {
+  const c = client();
+  const res = await c.api.forms[":slug"].$get({
+    param: { slug },
+  });
   if (res.status === 404) throw new FormNotFoundError(slug);
   if (!res.ok) throw new Error(`Failed to load form: ${res.statusText}`);
   return res.json();
@@ -47,18 +61,27 @@ export async function fetchForm(slug: string): Promise<Form> {
 export async function createForm(data: {
   title: string;
   description?: string;
-  fields: FormField[];
+  fields: Array<{
+    id: string;
+    label: string;
+    type: string;
+    required: boolean;
+    description?: string;
+    options?: string[];
+    validation?: { min?: number; max?: number; pattern?: string };
+  }>;
   voiceId?: string;
   greeting?: string;
   systemContext?: string;
   personality?: string;
   language?: string;
-}): Promise<Form> {
-  const res = await fetch("/api/forms", {
-    method: "POST",
-    headers: await authHeaders(),
-    body: JSON.stringify(data),
-  });
+}) {
+  const c = client();
+  // Body types require validators for full inference — cast input for mutations
+  const res = await c.api.forms.$post(
+    { json: data } as never,
+    { headers: await authHeaders() },
+  );
   if (!res.ok) throw new Error(`Failed to create form: ${res.statusText}`);
   return res.json();
 }
@@ -68,40 +91,96 @@ export async function updateForm(
   data: Partial<{
     title: string;
     description: string;
-    fields: FormField[];
+    fields: Array<{
+      id: string;
+      label: string;
+      type: string;
+      required: boolean;
+      description?: string;
+      options?: string[];
+      validation?: { min?: number; max?: number; pattern?: string };
+    }>;
     voiceId: string;
     greeting: string;
     systemContext: string;
     personality: string;
     language: string;
   }>,
-): Promise<Form> {
-  const res = await fetch(`${API_BASE}/api/forms/${id}`, {
-    method: "PUT",
-    headers: await authHeaders(),
-    body: JSON.stringify(data),
-  });
+) {
+  const c = client();
+  const res = await c.api.forms[":id"].$put(
+    { param: { id }, json: data } as never,
+    { headers: await authHeaders() },
+  );
   if (!res.ok) throw new Error(`Failed to update form: ${res.statusText}`);
   return res.json();
 }
 
-export async function deleteForm(id: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/api/forms/${id}`, {
-    method: "DELETE",
-    headers: await authHeaders(),
-  });
+export async function deleteForm(id: string) {
+  const c = client();
+  const res = await c.api.forms[":id"].$delete(
+    { param: { id } },
+    { headers: await authHeaders() },
+  );
   if (!res.ok) throw new Error(`Failed to delete form: ${res.statusText}`);
 }
 
 // ── Responses ───────────────────────────────────────────────────────────────
 
-export async function fetchResponses(slug: string): Promise<FormResponse[]> {
-  const res = await fetch(`${API_BASE}/api/forms/${slug}/responses`, {
-    headers: await authHeaders(),
-  });
+export async function fetchResponses(slug: string) {
+  const c = client();
+  const res = await c.api.forms[":slug"].responses.$get(
+    { param: { slug } },
+    { headers: await authHeaders() },
+  );
   if (!res.ok) throw new Error(`Failed to load responses: ${res.statusText}`);
   return res.json();
 }
+
+export async function createResponse(
+  slug: string,
+  answers: Record<string, unknown>,
+  options?: {
+    completed?: boolean;
+    duration?: number;
+  },
+) {
+  const c = client();
+  const res = await c.api.forms[":slug"].responses.$post({
+    param: { slug },
+    json: {
+      answers,
+      completed: options?.completed,
+      duration: options?.duration,
+    },
+  } as never);
+  if (!res.ok) throw new Error(`Failed to create response: ${res.statusText}`);
+  return res.json();
+}
+
+export async function updateResponse(
+  slug: string,
+  responseId: string,
+  answers: Record<string, unknown>,
+  options?: {
+    completed?: boolean;
+    duration?: number;
+  },
+) {
+  const c = client();
+  const res = await c.api.forms[":slug"].responses[":responseId"].$patch({
+    param: { slug, responseId },
+    json: {
+      answers,
+      completed: options?.completed,
+      duration: options?.duration,
+    },
+  } as never);
+  if (!res.ok) throw new Error(`Failed to update response: ${res.statusText}`);
+  return res.json();
+}
+
+// ── SSE streaming (manual — hono/client doesn't handle SSE consumption) ────
 
 export type ResponseStreamEvent =
   | { type: "connected"; payload: { ok: true; slug: string } }
@@ -150,7 +229,6 @@ export async function subscribeToResponsesStream(
 ): Promise<() => void> {
   const controller = new AbortController();
   const headers = await authHeaders();
-  delete headers["Content-Type"];
 
   const res = await fetch(`${API_BASE}/api/forms/${slug}/responses/stream`, {
     headers,
@@ -190,49 +268,6 @@ export async function subscribeToResponsesStream(
   })();
 
   return () => controller.abort();
-}
-
-export async function createResponse(
-  slug: string,
-  answers: Record<string, unknown>,
-  options?: {
-    completed?: boolean;
-    duration?: number;
-  },
-): Promise<FormResponse> {
-  const res = await fetch(`${API_BASE}/api/forms/${slug}/responses`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      answers,
-      completed: options?.completed,
-      duration: options?.duration,
-    }),
-  });
-  if (!res.ok) throw new Error(`Failed to create response: ${res.statusText}`);
-  return res.json();
-}
-
-export async function updateResponse(
-  slug: string,
-  responseId: string,
-  answers: Record<string, unknown>,
-  options?: {
-    completed?: boolean;
-    duration?: number;
-  },
-): Promise<FormResponse> {
-  const res = await fetch(`${API_BASE}/api/forms/${slug}/responses/${responseId}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      answers,
-      completed: options?.completed,
-      duration: options?.duration,
-    }),
-  });
-  if (!res.ok) throw new Error(`Failed to update response: ${res.statusText}`);
-  return res.json();
 }
 
 // ── Errors ──────────────────────────────────────────────────────────────────

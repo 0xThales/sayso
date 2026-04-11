@@ -8,7 +8,7 @@ Sayso is a voice-first form builder. Instead of typing, respondents talk to an E
 
 ## Architecture
 
-Monorepo with two pnpm workspaces: `web/` (React frontend) and `api/` (Hono backend).
+Turborepo monorepo with two pnpm workspaces: `web/` (React frontend) and `api/` (Hono backend).
 
 **API (`api/`)** — Hono server on Node (`@hono/node-server`), TypeScript, runs on port 3001.
 - `src/routes/elevenlabs.ts` — Proxies signed URL requests to ElevenLabs API (keeps API key server-side).
@@ -17,6 +17,7 @@ Monorepo with two pnpm workspaces: `web/` (React frontend) and `api/` (Hono back
 - `src/middleware/auth.ts` — Clerk JWT verification middleware. Extracts `userId` from Bearer token.
 - `src/db/` — Drizzle ORM with Neon Postgres. Schema in `schema.ts`. Forms have a `userId` column for ownership. DB is optional: if `DATABASE_URL` is unset, only ElevenLabs routes work (forms/responses return 503).
 - All routes are mounted under `/api` (e.g. `/api/elevenlabs/token`, `/api/forms`).
+- Routes use method chaining for Hono RPC type inference. `AppType` is exported from `src/index.ts` for the frontend client.
 
 **Web (`web/`)** — React 19 + Vite + Tailwind v4 + React Router v7 + Clerk auth.
 - `src/pages/FormView.tsx` — Main voice form page (public). Uses `@elevenlabs/react`.
@@ -24,12 +25,12 @@ Monorepo with two pnpm workspaces: `web/` (React frontend) and `api/` (Hono back
 - `src/pages/Dashboard.tsx` — User's forms list (protected, requires auth).
 - `src/pages/FormEditor.tsx` — Create/edit forms (protected).
 - `src/pages/FormDetail.tsx` — Form detail with responses (protected).
-- `src/lib/api.ts` — API client with auth token injection via `setTokenGetter()`.
+- `src/lib/api.ts` — Type-safe API client using Hono RPC (`hono/client`). Types are inferred from the API routes via `AppType` — no manual type duplication. Auth token injection via `setTokenGetter()`.
 - `src/data/forms.ts` — Hardcoded form definitions + `buildAgentPrompt()`.
 - `src/lib/elevenlabs.ts` — Fetches signed URL from the API.
 - Auth: `ClerkProvider` wraps the app in `main.tsx`. Dashboard routes use `ProtectedRoute` (redirects to sign-in). `App.tsx` wires `useAuth().getToken` into the API client.
 - Vite proxies `/api` to `localhost:3001` in dev.
-- Path alias: `@/` maps to `./src/`.
+- Path aliases: `@/` maps to `./src/`, `@api/` maps to `../api/src/` (type imports only).
 
 **ElevenLabs agent config** — `agent_configs/Sayso-Intake.json` contains the full ElevenLabs agent configuration (voice, TTS, ASR, tools). The agent ID is `agent_6501knsjznw3exbacwqn0xpp4qxc`.
 
@@ -43,12 +44,15 @@ Monorepo with two pnpm workspaces: `web/` (React frontend) and `api/` (Hono back
 # Install dependencies
 pnpm install
 
-# Dev (both web + api concurrently)
+# Dev (both web + api via Turborepo)
 pnpm dev
 
 # Dev individual services
 pnpm dev:web          # Vite on :5173
 pnpm dev:api          # tsx watch on :3001
+
+# Type check
+pnpm type-check       # type-check both workspaces (cached by Turborepo)
 
 # Build
 pnpm build            # builds both web and api
@@ -82,4 +86,4 @@ Copy `web/.env.example` to `web/.env`:
 
 ## Deployment
 
-Vercel config in `vercel.json` — builds the `web/` Vite app. The API would need separate deployment.
+Frontend: Vercel (config in `vercel.json`). API: Railway.

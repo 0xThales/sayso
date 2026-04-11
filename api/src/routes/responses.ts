@@ -12,17 +12,18 @@ import {
 
 type Env = { Variables: { db: Db; userId: string } };
 
-const responses = new Hono<Env>();
-
 function buildCompletedAt(completed: boolean | undefined, fallback: Date | null) {
   if (completed === true) return new Date();
   if (completed === false) return null;
   return fallback;
 }
 
-// ── POST /forms/:slug/responses — Submit a response (PUBLIC) ───────────────
+// ── Routes (chained for Hono RPC type inference) ─────────────────────────────
 
-responses.post("/:slug/responses", async (c) => {
+const responses = new Hono<Env>()
+
+// POST /forms/:slug/responses — Submit a response (PUBLIC)
+.post("/:slug/responses", async (c) => {
   const db = c.get("db");
   const slug = c.req.param("slug");
 
@@ -51,14 +52,14 @@ responses.post("/:slug/responses", async (c) => {
     })
     .returning();
 
-  await publishFormResponseCreated(form.id, response);
+  const created = response!;
+  await publishFormResponseCreated(form.id, created);
 
-  return c.json(response, 201);
-});
+  return c.json(created, 201);
+})
 
-// ── PATCH /forms/:slug/responses/:responseId — Update a draft (PUBLIC) ─────
-
-responses.patch("/:slug/responses/:responseId", async (c) => {
+// PATCH /forms/:slug/responses/:responseId — Update a draft (PUBLIC)
+.patch("/:slug/responses/:responseId", async (c) => {
   const db = c.get("db");
   const slug = c.req.param("slug");
   const responseId = c.req.param("responseId");
@@ -109,14 +110,14 @@ responses.patch("/:slug/responses/:responseId", async (c) => {
     )
     .returning();
 
-  await publishFormResponseUpdated(form.id, response);
+  const updated = response!;
+  await publishFormResponseUpdated(form.id, updated);
 
-  return c.json(response);
-});
+  return c.json(updated);
+})
 
-// ── GET /forms/:slug/responses/stream — Live response events (owner only) ───
-
-responses.get("/:slug/responses/stream", clerkAuth, async (c) => {
+// GET /forms/:slug/responses/stream — Live response events (owner only)
+.get("/:slug/responses/stream", clerkAuth, async (c) => {
   const db = c.get("db");
   const userId = c.get("userId");
   const slug = c.req.param("slug");
@@ -166,11 +167,10 @@ responses.get("/:slug/responses/stream", clerkAuth, async (c) => {
       });
     }
   });
-});
+})
 
-// ── GET /forms/:slug/responses — List responses (owner only) ───────────────
-
-responses.get("/:slug/responses", clerkAuth, async (c) => {
+// GET /forms/:slug/responses — List responses (owner only)
+.get("/:slug/responses", clerkAuth, async (c) => {
   const db = c.get("db");
   const userId = c.get("userId");
   const slug = c.req.param("slug");

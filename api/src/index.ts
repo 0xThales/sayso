@@ -10,24 +10,8 @@ import { responses } from "./routes/responses.js";
 
 type Env = { Variables: { db: Db } };
 
-const app = new Hono<Env>();
-const api = new Hono<Env>();
 const DEFAULT_PORT = 3001;
 const db = process.env.DATABASE_URL ? createDb() : null;
-
-// Middleware
-api.use(
-  "*",
-  cors({
-    origin: (origin) => {
-      // Allow local dev and Vercel deployments
-      if (!origin) return "*";
-      if (origin.includes("localhost")) return origin;
-      if (origin.endsWith(".vercel.app")) return origin;
-      return null as unknown as string;
-    },
-  }),
-);
 
 const requireDb: MiddlewareHandler<Env> = async (c, next) => {
   if (!db) {
@@ -44,17 +28,33 @@ const requireDb: MiddlewareHandler<Env> = async (c, next) => {
   await next();
 };
 
-// Routes
-api.get("/health", (c) => c.json({ status: "ok" }));
-api.route("/elevenlabs", elevenlabs);
-api.use("/forms", requireDb);
-api.use("/forms/*", requireDb);
-api.route("/forms", forms);
-api.route("/forms", responses);
+// ── App (chained for Hono RPC type export) ──────────────────────────────────
 
-app.route("/api", api);
+const api = new Hono<Env>()
+  .use(
+    "*",
+    cors({
+      origin: (origin) => {
+        if (!origin) return "*";
+        if (origin.includes("localhost")) return origin;
+        if (origin.endsWith(".vercel.app")) return origin;
+        return null as unknown as string;
+      },
+    }),
+  )
+  .get("/health", (c) => c.json({ status: "ok" }))
+  .use("/forms", requireDb)
+  .use("/forms/*", requireDb)
+  .route("/elevenlabs", elevenlabs)
+  .route("/forms", forms)
+  .route("/forms", responses);
 
-// Start
+const app = new Hono().route("/api", api);
+
+export type AppType = typeof app;
+
+// ── Start ───────────────────────────────────────────────────────────────────
+
 const port = Number(process.env.PORT ?? DEFAULT_PORT);
 
 if (!db) {
