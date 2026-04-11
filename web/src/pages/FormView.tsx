@@ -124,6 +124,7 @@ function VoiceFormCanvas({ form }: { form: Form }) {
   const saveChainRef = useRef<Promise<FormResponse | null>>(Promise.resolve(null));
   const isSubmittingRef = useRef(false);
   const isCompletedRef = useRef(false);
+  const conversationIdRef = useRef<string | null>(null);
   const traceRef = useRef<LangfuseTrace | null>(null);
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([
     {
@@ -152,6 +153,7 @@ function VoiceFormCanvas({ form }: { form: Form }) {
   const conversation = useConversation({
     onConnect: ({ conversationId }) => {
       startTimeRef.current = Date.now();
+      conversationIdRef.current = conversationId;
       traceRef.current = traceSession({
         sessionType: "form_response",
         conversationId,
@@ -273,6 +275,7 @@ function VoiceFormCanvas({ form }: { form: Form }) {
             : await createResponse(slugRef.current, answersSnapshot, {
                 completed: completedFlag,
                 duration: getDurationSeconds(),
+                conversationId: conversationIdRef.current ?? undefined,
               });
 
           responseIdRef.current = response.id;

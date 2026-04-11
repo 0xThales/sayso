@@ -143,6 +143,7 @@ export async function createResponse(
   options?: {
     completed?: boolean;
     duration?: number;
+    conversationId?: string;
   },
 ) {
   const c = client();
@@ -152,6 +153,7 @@ export async function createResponse(
       answers,
       completed: options?.completed,
       duration: options?.duration,
+      conversationId: options?.conversationId,
     },
   } as never);
   if (!res.ok) throw new Error(`Failed to create response: ${res.statusText}`);

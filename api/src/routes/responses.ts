@@ -39,12 +39,14 @@ const responses = new Hono<Env>()
     answers: Record<string, unknown>;
     completed?: boolean;
     duration?: number;
+    conversationId?: string;
   }>();
 
   const [response] = await db
     .insert(schema.responses)
     .values({
       formId: form.id,
+      conversationId: body.conversationId,
       answers: body.answers,
       completed: body.completed ?? true,
       completedAt: body.completed !== false ? new Date() : null,

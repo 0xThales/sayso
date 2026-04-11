@@ -41,6 +41,7 @@ export const responses = pgTable("responses", {
   formId: text("form_id")
     .notNull()
     .references(() => forms.id, { onDelete: "cascade" }),
+  conversationId: text("conversation_id"),
   answers: jsonb("answers").notNull().$type<Record<string, unknown>>(),
   completed: boolean("completed").notNull().default(false),
   completedAt: timestamp("completed_at", { withTimezone: true }),
