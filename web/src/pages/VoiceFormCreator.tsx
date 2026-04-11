@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router";
+import { Link, useLocation } from "react-router";
 import {
   ConversationProvider,
   useConversation,
@@ -239,7 +239,7 @@ function VoiceOrb({
 
 // ── Creator Canvas ───────────────────────────────────────────────────────────
 
-function CreatorCanvas() {
+function CreatorCanvas({ voiceId }: { voiceId?: string }) {
   const [draft, setDraft] = useState<FormDraft>(emptyDraft);
   const [created, setCreated] = useState<{
     slug: string;
@@ -464,6 +464,7 @@ function CreatorCanvas() {
       title: d.title,
       description: d.description || undefined,
       fields: d.fields,
+      voiceId: voiceId || undefined,
       greeting: d.greeting || undefined,
       personality: d.personality || undefined,
     })
@@ -513,11 +514,12 @@ function CreatorCanvas() {
         signedUrl,
         overrides: {
           agent: {
-            prompt: { prompt: buildFormCreatorPrompt() },
+            prompt: { prompt: buildFormCreatorPrompt(voiceId) },
             firstMessage:
               "Hey! Tell me what you need — what's this form for and who's going to fill it out?",
             language: "en" as const,
           },
+          ...(voiceId ? { tts: { voiceId } } : {}),
         },
       });
     } finally {
@@ -871,9 +873,12 @@ function CreatorCanvas() {
 // ── Page component ──────────────────────────────────────────────────────────
 
 export function VoiceFormCreator() {
+  const location = useLocation();
+  const voiceId = (location.state as { voiceId?: string } | null)?.voiceId;
+
   return (
     <ConversationProvider>
-      <CreatorCanvas />
+      <CreatorCanvas voiceId={voiceId} />
     </ConversationProvider>
   );
 }
