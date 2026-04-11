@@ -8,7 +8,7 @@ Sayso is a voice-first form builder. Instead of typing, respondents talk to an E
 
 ## Architecture
 
-Turborepo monorepo with two pnpm workspaces: `web/` (React frontend) and `api/` (Hono backend).
+Turborepo monorepo with three pnpm workspaces: `landing/` (Astro marketing site), `web/` (React app), and `api/` (Hono backend).
 
 **API (`api/`)** — Hono server on Node (`@hono/node-server`), TypeScript, runs on port 3001.
 - `src/routes/elevenlabs.ts` — Proxies signed URL requests to ElevenLabs API (keeps API key server-side).
@@ -19,9 +19,16 @@ Turborepo monorepo with two pnpm workspaces: `web/` (React frontend) and `api/` 
 - All routes are mounted under `/api` (e.g. `/api/elevenlabs/token`, `/api/forms`).
 - Routes use method chaining for Hono RPC type inference. `AppType` is exported from `src/index.ts` for the frontend client.
 
-**Web (`web/`)** — React 19 + Vite + Tailwind v4 + React Router v7 + Clerk auth.
+**Landing (`landing/`)** — Astro 5 + React islands + Tailwind v4. Marketing site for SEO.
+- `src/pages/index.astro` — Entry page with full SEO head (meta, OG, Twitter cards).
+- `src/components/Landing.tsx` — React island (`client:load`) with framer-motion animations.
+- `src/styles/global.css` — Shared Tailwind v4 theme (same tokens as web).
+- Uses `PUBLIC_APP_URL` env var to link CTAs to the React app.
+- Dev: `http://localhost:4321`. Deployed as its own Vercel project (root domain).
+
+**Web (`web/`)** — React 19 + Vite + Tailwind v4 + React Router v7 + Clerk auth. The app (dashboard, editor, forms).
+- `/` redirects to `/dashboard`.
 - `src/pages/FormView.tsx` — Main voice form page (public). Uses `@elevenlabs/react`.
-- `src/pages/Landing.tsx` — Marketing landing page with framer-motion animations (public).
 - `src/pages/Dashboard.tsx` — User's forms list (protected, requires auth).
 - `src/pages/FormEditor.tsx` — Create/edit forms (protected).
 - `src/pages/FormDetail.tsx` — Form detail with responses (protected).
@@ -44,10 +51,11 @@ Turborepo monorepo with two pnpm workspaces: `web/` (React frontend) and `api/` 
 # Install dependencies
 pnpm install
 
-# Dev (both web + api via Turborepo)
+# Dev (all three services via Turborepo)
 pnpm dev
 
 # Dev individual services
+pnpm dev:landing      # Astro on :4321
 pnpm dev:web          # Vite on :5173
 pnpm dev:api          # tsx watch on :3001
 
@@ -77,13 +85,68 @@ Copy `api/.env.example` to `api/.env`. Required vars:
 Copy `web/.env.example` to `web/.env`:
 - `VITE_CLERK_PUBLISHABLE_KEY` — Clerk publishable key for frontend auth
 
-## Design System
+Copy `landing/.env.example` to `landing/.env`:
+- `PUBLIC_APP_URL` — URL of the React app (default `http://localhost:5173`, production e.g. `https://app.sayso.com`)
 
-- Fonts: Fraunces (display/headings), DM Sans (body)
-- Colors: `cream` (#FFF8F0), `coral` (#FF6B5A), `coral-light`, `coral-dark`
-- Tailwind v4 with `@theme` block in `web/src/index.css`
-- Landing page uses black/white editorial style; form page uses cream/coral palette
+## Brand & Design System
+
+Full brand guidelines live in `BRAND.md`. Below are the rules Claude must follow when writing UI code or copy.
+
+### Two Visual Modes — Never Mix Them
+
+1. **Editorial (landing site)**: Black/white only. No cream, no coral. High-contrast, typographic, magazine-like. This is the public marketing face.
+2. **Product (web app)**: Cream (`#FFF8F0`) background, coral (`#FF6B5A`) accents. Warmer, functional. This is where users work.
+
+### Colors (Tailwind v4 `@theme` tokens)
+
+| Token | Hex | Where |
+|-------|-----|-------|
+| `cream` | `#FFF8F0` | App background only |
+| `coral` | `#FF6B5A` | App interactive accents |
+| `coral-light` | `#FF8A7A` | Hover on coral |
+| `coral-dark` | `#E5554A` | Pressed on coral |
+| `black` / `white` | — | Landing page, text, borders |
+
+Use Tailwind opacity modifiers for tints: `black/60` (secondary text), `black/10` (borders), etc.
+
+### Typography
+
+- **Display**: Fraunces (serif) — headings, hero text, emphasis. Use `font-display`.
+- **Body**: DM Sans (sans-serif) — body text, UI, buttons. Use `font-body`.
+- Emphasis in headings: `<em className="italic">` (Fraunces italic), never bold.
+- Kickers/labels: `text-[10px] uppercase tracking-[0.28em] text-black/50`, prefixed with `§` or `●`.
+- Body text color: `#231f1b` (warm dark), not pure black.
+
+### Copy & Tone
+
+- Short, declarative sentences. No filler words (just, simply, easily, seamlessly).
+- Headlines: lowercase, punchy. Italic for the key word.
+- CTAs: action-first ("Try a live demo"), never "Learn more" or "Click here".
+- Don't oversell. "Respondents talk. You get structured data." — not "Revolutionary AI solution."
+
+### Components
+
+- **Buttons**: Always `rounded-full` (pill). Primary = black bg + white text + `→` arrow. No coral buttons on landing.
+- **Cards**: `rounded-[2rem]` or `rounded-[2.5rem]`, `border border-black`. Hard drop shadow: `shadow-[16px_16px_0_0_rgba(0,0,0,1)]`. No soft/blurry shadows.
+- **Icons**: Use typographic symbols (`→`, `✦`, `●`, `§`), not icon libraries.
+- **Layout**: `max-w-[1600px] px-8` container. Sections use `py-32` vertical spacing.
+
+### Motion (Framer Motion)
+
+- Default ease: `[0.22, 1, 0.36, 1]`.
+- Reveal on scroll: `initial={{ opacity: 0, y: 40 }}`, `once: true`.
+- Stagger: `delay: i * 0.08` to `i * 0.15`.
+- Logo dot pulse: `scale [1, 1.4, 1]`, 1.8s.
+- Never `ease-in`. Always custom bezier or `easeInOut`.
+
+### Logo
+
+Wordmark "sayso" in Fraunces semibold + animated pulse dot. Always lowercase, always monochrome. See `BRAND.md` for full spec.
 
 ## Deployment
 
-Frontend: Vercel (config in `vercel.json`). API: Railway.
+- **Landing**: Vercel project, root directory `landing/`, framework Astro. Root domain (e.g. `sayso.com`).
+- **Web app**: Vercel project, root directory `web/`, framework Vite. Subdomain (e.g. `app.sayso.com`).
+- **API**: Railway.
+
+Each Vercel project points at the same repo with a different root directory. `vercel.json` exists in both `landing/` and root (for web).
