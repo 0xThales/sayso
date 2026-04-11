@@ -770,6 +770,7 @@ function VoiceFormCanvas({ form }: { form: Form }) {
             firstMessage: buildAgentFirstMessage(form),
             language: "en" as const,
           },
+          ...(form.voiceId ? { tts: { voiceId: form.voiceId } } : {}),
         },
         dynamicVariables: {
           form_id: form.id,

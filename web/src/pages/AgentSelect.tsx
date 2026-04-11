@@ -40,6 +40,7 @@ type Agent = {
   tagline: string;
   description: string;
   image: string;
+  voiceId: string;
 };
 
 const AGENTS: Agent[] = [
@@ -50,6 +51,7 @@ const AGENTS: Agent[] = [
     description:
       "Listens closely and asks the gentle follow-ups that draw out the real answer.",
     image: "/nadhi.png",
+    voiceId: "cjVigY5qzO86Huf0OWal",
   },
   {
     id: "tim",
@@ -58,6 +60,7 @@ const AGENTS: Agent[] = [
     description:
       "Keeps things moving with sharp questions and a touch of dry humor.",
     image: "/tim.png",
+    voiceId: "TX3LPaxmHKxFdv7VOQHJ",
   },
 ];
 
@@ -135,9 +138,10 @@ function AgentCard({
 export function AgentSelect() {
   const navigate = useNavigate();
 
-  const handleSelect = (_agentId: string) => {
-    // For now, both agents route to the same creator session.
-    navigate("/dashboard/new/voice/create");
+  const handleSelect = (agent: Agent) => {
+    navigate("/dashboard/new/voice/create", {
+      state: { voiceId: agent.voiceId },
+    });
   };
 
   return (
@@ -237,7 +241,7 @@ export function AgentSelect() {
               <AgentCard
                 agent={agent}
                 index={i}
-                onSelect={() => handleSelect(agent.id)}
+                onSelect={() => handleSelect(agent)}
               />
             </div>
           ))}

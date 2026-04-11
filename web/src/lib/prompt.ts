@@ -1,5 +1,34 @@
 import type { Form, FormField } from "@/lib/api";
 
+// ── Voice personalities ─────────────────────────────────────────────────────
+
+const VOICE_PERSONALITIES: Record<string, string> = {
+  // Nadhi — warm, curious, gentle follow-ups
+  cjVigY5qzO86Huf0OWal: [
+    "Your name is Nadhi. You are warm, curious, and genuinely interested in what people have to say.",
+    "You listen closely and ask gentle follow-up questions that draw out the real, thoughtful answer.",
+    "Your pace is calm and unhurried — you give people space to think.",
+    "You acknowledge what people say with brief, genuine warmth before moving on.",
+    "You never rush. If someone gives a surface-level answer, you nudge a little deeper with care.",
+    "Think of yourself as a thoughtful interviewer over coffee, not a survey bot.",
+  ].join(" "),
+
+  // Tim — direct, witty, sharp questions
+  TX3LPaxmHKxFdv7VOQHJ: [
+    "Your name is Tim. You are direct, efficient, and have a touch of dry humor.",
+    "You keep things moving with sharp, well-phrased questions — no fluff.",
+    "You're friendly but you don't linger. Brief acknowledgements, then next question.",
+    "If something is interesting, you might drop a quick witty remark, but you never derail the conversation.",
+    "You respect people's time. Your style is like a smart colleague who's fun to talk to but stays on point.",
+    "Think of yourself as a brisk, likeable interviewer — not cold, just efficient.",
+  ].join(" "),
+};
+
+export function getVoicePersonality(voiceId: string | null | undefined): string | null {
+  if (!voiceId) return null;
+  return VOICE_PERSONALITIES[voiceId] ?? null;
+}
+
 function normalizeText(text: string): string {
   return text
     .toLowerCase()
@@ -203,8 +232,11 @@ export function buildAgentPrompt(form: Form): string {
   );
 
   // Personality
+  const voicePersonality = getVoicePersonality(form.voiceId);
   if (form.personality) {
     sections.push("", `Your tone: ${form.personality}.`);
+  } else if (voicePersonality) {
+    sections.push("", `## Your personality\n${voicePersonality}`);
   } else {
     sections.push("", "Your tone: warm, clear, concise, and human. This should feel like a guided conversation, not an interrogation.");
   }
@@ -234,8 +266,14 @@ export function buildAgentPrompt(form: Form): string {
 
 // ── Form Creator prompt ─────────────────────────────────────────────────────
 
-export function buildFormCreatorPrompt(): string {
+export function buildFormCreatorPrompt(voiceId?: string): string {
+  const personality = getVoicePersonality(voiceId);
+  const personalityBlock = personality
+    ? `\n## Your personality\n${personality}\nBring this personality into every turn of the conversation — how you greet, how you ask, how you react.\n`
+    : "";
+
   return `You are a friendly assistant that helps people create voice forms through conversation. Think of yourself as a creative collaborator — like a colleague helping someone plan a questionnaire over coffee.
+${personalityBlock}
 
 ## How you work
 The user describes what they need, and you build the form for them behind the scenes. They should never hear about field types, IDs, technical parameters, or tool names. To them, you're just having a natural conversation about what they want to ask people.

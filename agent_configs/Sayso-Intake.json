@@ -157,7 +157,7 @@
         "overrides": {
             "conversation_config_override": {
                 "tts": {
-                    "voice_id": false
+                    "voice_id": true
                 },
                 "conversation": {
                     "text_only": true
