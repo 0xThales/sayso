@@ -72,6 +72,7 @@ function CreatorCanvas({ voiceId }: { voiceId?: string }) {
   const draftRef = useRef<FormDraft>(emptyDraft());
   const traceRef = useRef<LangfuseTrace | null>(null);
   const transcriptEndRef = useRef<HTMLDivElement>(null);
+  const autoEndTimeoutRef = useRef<number | null>(null);
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
 
   const fieldCount = useMemo(() => draft.fields.length, [draft.fields]);
@@ -79,6 +80,14 @@ function CreatorCanvas({ voiceId }: { voiceId?: string }) {
   useEffect(() => {
     transcriptEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [transcript]);
+
+  useEffect(() => {
+    return () => {
+      if (autoEndTimeoutRef.current !== null) {
+        window.clearTimeout(autoEndTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const conversation = useConversation({
     onConnect: ({ conversationId }) => {
@@ -197,6 +206,27 @@ function CreatorCanvas({ voiceId }: { voiceId?: string }) {
       ]);
     },
   });
+
+  useEffect(() => {
+    if (!created || conversation.status !== "connected") return;
+
+    if (autoEndTimeoutRef.current !== null) {
+      window.clearTimeout(autoEndTimeoutRef.current);
+    }
+
+    // Let the tool result round-trip back to ElevenLabs before we close locally.
+    autoEndTimeoutRef.current = window.setTimeout(() => {
+      void conversation.endSession();
+      autoEndTimeoutRef.current = null;
+    }, 800);
+
+    return () => {
+      if (autoEndTimeoutRef.current !== null) {
+        window.clearTimeout(autoEndTimeoutRef.current);
+        autoEndTimeoutRef.current = null;
+      }
+    };
+  }, [created, conversation.status]);
 
   // ── Draft helpers ─────────────────────────────────────────────────────────
 
@@ -358,9 +388,7 @@ function CreatorCanvas({ voiceId }: { voiceId?: string }) {
           text: `Form created: ${form.slug}`,
         },
       ]);
-
-      await conversation.endSession();
-      return "Form created successfully. The conversation is ending now.";
+      return "Form created successfully. The form is saved. Do not ask more questions. End the conversation now.";
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
 
