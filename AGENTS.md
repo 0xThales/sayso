@@ -37,7 +37,7 @@ Turborepo monorepo with three pnpm workspaces: `landing/` (Astro marketing site)
 **ElevenLabs agent config** — `agent_configs/Sayso-Intake.json` contains the full ElevenLabs agent configuration (voice, TTS, ASR, tools). The agent ID is `agent_6501knsjznw3exbacwqn0xpp4qxc`.
 
 **Voice agents** — Two voice personalities (selected in `AgentSelect.tsx`):
-- **Nadhi** (voice `cjVigY5qzO86Huf0OWal`) — warm, curious, gentle follow-ups.
+- **Emma** (voice `cjVigY5qzO86Huf0OWal`) — warm, curious, gentle follow-ups.
 - **Tim** (voice `TX3LPaxmHKxFdv7VOQHJ`) — direct, witty, efficient.
 
 Voice ID is stored per form (`voiceId` column) and passed as TTS override at session start. Personality prompts are defined in `web/src/lib/prompt.ts` (`VOICE_PERSONALITIES` map) and injected into both creator and respondent agent prompts.
