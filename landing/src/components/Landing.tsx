@@ -196,14 +196,11 @@ export default function Landing({ appUrl }: { appUrl: string }) {
           </div>
           <a
             href={`${appUrl}/dashboard`}
-            className="group relative inline-flex items-center gap-2 overflow-hidden rounded-full bg-black px-5 py-2.5 text-sm font-medium text-white transition"
+            className="group relative inline-flex items-center gap-2 overflow-hidden rounded-full border border-black bg-black px-5 py-2.5 text-sm font-medium text-white transition-colors duration-500 hover:text-black"
           >
             <span className="relative z-10">Try a demo</span>
-            <span className="relative z-10 transition group-hover:translate-x-0.5">→</span>
+            <span className="relative z-10 transition-transform duration-500 group-hover:translate-x-0.5">→</span>
             <span className="absolute inset-0 -translate-x-full bg-white transition-transform duration-500 group-hover:translate-x-0" />
-            <span className="absolute inset-0 flex items-center justify-center gap-2 text-black opacity-0 transition-opacity duration-500 group-hover:opacity-100">
-              Try a demo →
-            </span>
           </a>
         </div>
       </motion.nav>

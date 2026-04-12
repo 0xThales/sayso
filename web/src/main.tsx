@@ -3,8 +3,6 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router";
 import {
   ClerkProvider,
-  SignIn,
-  SignUp,
   SignedIn,
   SignedOut,
   RedirectToSignIn,
@@ -16,6 +14,8 @@ import { FormEditor } from "./pages/FormEditor";
 import { FormDetail } from "./pages/FormDetail";
 import { VoiceFormCreator } from "./pages/VoiceFormCreator";
 import { AgentSelect } from "./pages/AgentSelect";
+import { SignInPage } from "./pages/SignInPage";
+import { SignUpPage } from "./pages/SignUpPage";
 import "./index.css";
 
 const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
@@ -45,25 +45,11 @@ createRoot(document.getElementById("root")!).render(
     >
       <BrowserRouter>
         <Routes>
+          <Route path="sign-in/*" element={<SignInPage />} />
+          <Route path="sign-up/*" element={<SignUpPage />} />
           <Route element={<App />}>
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="f/:slug" element={<FormView />} />
-            <Route
-              path="sign-in/*"
-              element={
-                <div className="flex min-h-screen items-center justify-center">
-                  <SignIn routing="path" path="/sign-in" />
-                </div>
-              }
-            />
-            <Route
-              path="sign-up/*"
-              element={
-                <div className="flex min-h-screen items-center justify-center">
-                  <SignUp routing="path" path="/sign-up" />
-                </div>
-              }
-            />
             <Route
               path="dashboard"
               element={
