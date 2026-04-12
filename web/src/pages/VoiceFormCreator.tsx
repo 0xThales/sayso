@@ -543,32 +543,9 @@ function CreatorCanvas({ voiceId }: { voiceId?: string }) {
       </motion.nav>
 
       {/* Main layout */}
-      <section className="relative z-10 grid min-h-[calc(100dvh-5rem)] lg:grid-cols-[1fr_auto_1fr]">
-        {/* Left: live agent transcript */}
-        <div className="hidden flex-col justify-center px-8 lg:flex">
-          <AnimatePresence mode="wait">
-            {lastAgentMessage ? (
-              <motion.div
-                key={lastAgentMessage.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-                className="max-w-sm"
-              >
-                <p className="mb-3 text-[10px] uppercase tracking-[0.28em] text-black/40">
-                  § The agent
-                </p>
-                <p className="font-display text-2xl leading-[1.2] text-black">
-                  "{lastAgentMessage.text}"
-                </p>
-              </motion.div>
-            ) : null}
-          </AnimatePresence>
-        </div>
-
+      <section className="relative z-10 flex min-h-[calc(100dvh-5rem)] justify-center">
         {/* Center: editorial heading + orb */}
-        <div className="flex flex-col items-center justify-center px-4 py-10 sm:px-6 sm:py-16 md:px-8">
+        <div className="flex w-full max-w-3xl flex-col items-center justify-start px-4 py-10 sm:px-6 sm:py-16 md:px-8">
           {/* Eyebrow */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -583,38 +560,47 @@ function CreatorCanvas({ voiceId }: { voiceId?: string }) {
             <div className="h-px w-16 bg-black/20" />
           </motion.div>
 
-          {/* Editorial headline */}
-          <div className="mt-10">
-            <h1 className="text-center font-display text-6xl font-semibold leading-[0.9] tracking-[-0.03em] md:text-7xl lg:text-8xl">
-              <div className="overflow-hidden">
-                <motion.div
-                  initial={{ y: "110%" }}
-                  animate={{ y: "0%" }}
-                  transition={{
-                    duration: 1,
-                    ease: [0.22, 1, 0.36, 1],
-                    delay: 0.4,
-                  }}
-                >
-                  Describe your form.
-                </motion.div>
-              </div>
-              <div className="overflow-hidden">
-                <motion.em
-                  initial={{ y: "110%", opacity: 0 }}
-                  animate={{ y: "0%", opacity: 1 }}
-                  transition={{
-                    duration: 1,
-                    ease: [0.22, 1, 0.36, 1],
-                    delay: 0.55,
-                  }}
-                  className="block italic text-black/60"
-                >
-                  We'll build it together.
-                </motion.em>
-              </div>
-            </h1>
-          </div>
+          {/* Editorial headline — only shown while idle */}
+          <AnimatePresence>
+            {isIdle && (
+              <motion.div
+                initial={{ opacity: 1 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                className="mt-10"
+              >
+                <h1 className="text-center font-display text-6xl font-semibold leading-[0.9] tracking-[-0.03em] md:text-7xl lg:text-8xl">
+                  <div className="overflow-hidden">
+                    <motion.div
+                      initial={{ y: "110%" }}
+                      animate={{ y: "0%" }}
+                      transition={{
+                        duration: 1,
+                        ease: [0.22, 1, 0.36, 1],
+                        delay: 0.4,
+                      }}
+                    >
+                      Describe your form.
+                    </motion.div>
+                  </div>
+                  <div className="overflow-hidden">
+                    <motion.em
+                      initial={{ y: "110%", opacity: 0 }}
+                      animate={{ y: "0%", opacity: 1 }}
+                      transition={{
+                        duration: 1,
+                        ease: [0.22, 1, 0.36, 1],
+                        delay: 0.55,
+                      }}
+                      className="block italic text-black/60"
+                    >
+                      We'll build it together.
+                    </motion.em>
+                  </div>
+                </h1>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Orb */}
           <motion.div
@@ -662,32 +648,66 @@ function CreatorCanvas({ voiceId }: { voiceId?: string }) {
               </motion.button>
             )}
           </AnimatePresence>
-        </div>
 
-        {/* Right: live draft panel */}
-        <div className="hidden flex-col justify-center px-8 lg:flex">
+          {/* Agent's last utterance — conversational caption below the orb */}
+          <div className="mt-10 min-h-[4rem] w-full max-w-xl">
+            <AnimatePresence mode="wait">
+              {lastAgentMessage ? (
+                <motion.div
+                  key={lastAgentMessage.id}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                  className="text-center"
+                >
+                  <p className="text-[9px] uppercase tracking-[0.28em] text-black/40">
+                    § The agent
+                  </p>
+                  <p className="mx-auto mt-3 max-w-prose text-base leading-7 text-black/70">
+                    "{lastAgentMessage.text}"
+                  </p>
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
+          </div>
+
+          {/* Live draft — title + questions below the conversation */}
           <AnimatePresence mode="wait">
             {draft.title || draft.fields.length > 0 ? (
               <motion.div
                 key="draft"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 12 }}
                 transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-                className="max-w-sm"
+                className="mt-10 w-full max-w-xl border-t border-black/10 pt-10"
               >
-                <p className="mb-3 text-[10px] uppercase tracking-[0.28em] text-black/40">
-                  § Draft
-                </p>
+                <div className="flex items-baseline justify-between">
+                  <p className="text-[10px] uppercase tracking-[0.28em] text-black/40">
+                    § Draft
+                  </p>
+                  {draft.fields.length > 0 && (
+                    <p className="text-[10px] uppercase tracking-[0.28em] text-black/40">
+                      {String(draft.fields.length).padStart(2, "0")}{" "}
+                      {draft.fields.length === 1 ? "question" : "questions"}
+                    </p>
+                  )}
+                </div>
                 {draft.title && (
                   <motion.h2
                     key={draft.title}
                     initial={{ opacity: 0, y: 6 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="font-display text-3xl font-semibold leading-[1] tracking-tight"
+                    className="mt-4 font-display text-4xl font-semibold leading-[1] tracking-tight"
                   >
                     {draft.title}
                   </motion.h2>
+                )}
+                {draft.description && (
+                  <p className="mt-3 text-sm leading-6 text-black/50">
+                    {draft.description}
+                  </p>
                 )}
                 {draft.fields.length > 0 && (
                   <ol className="mt-6 divide-y divide-black/10 border-y border-black/10">
@@ -704,11 +724,11 @@ function CreatorCanvas({ voiceId }: { voiceId?: string }) {
                           }}
                           className="flex items-start gap-4 py-4"
                         >
-                          <span className="mt-0.5 font-display text-xs text-black/40">
+                          <span className="mt-1 font-display text-xs text-black/40">
                             {String(i + 1).padStart(2, "0")}
                           </span>
                           <div className="flex-1">
-                            <p className="font-display text-base leading-6 text-black">
+                            <p className="font-display text-lg leading-6 text-black">
                               {field.label}
                             </p>
                             <p className="mt-1 text-[9px] uppercase tracking-[0.28em] text-black/40">
@@ -730,22 +750,12 @@ function CreatorCanvas({ voiceId }: { voiceId?: string }) {
                     <p className="text-[9px] uppercase tracking-[0.28em] text-black/40">
                       Greeting
                     </p>
-                    <p className="mt-2 font-display text-sm italic leading-6 text-black/70">
+                    <p className="mt-2 text-sm italic leading-6 text-black/60">
                       "{draft.greeting}"
                     </p>
                   </motion.div>
                 )}
               </motion.div>
-            ) : isConnected ? (
-              <motion.p
-                key="empty"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="max-w-xs text-[11px] uppercase tracking-[0.28em] text-black/40"
-              >
-                § The draft will appear here as you describe it.
-              </motion.p>
             ) : null}
           </AnimatePresence>
         </div>

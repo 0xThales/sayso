@@ -70,9 +70,7 @@ export function Dashboard() {
           </p>
           <p className="max-w-xl font-display text-2xl leading-[1.25] text-black md:text-3xl">
             Voice-first forms that listen to your respondents.{" "}
-            <em className="italic text-black/60">
-              Start one with your voice.
-            </em>
+            <em className="italic text-black/60">Start building now.</em>
           </p>
           <div className="text-right">
             <p className="text-[10px] uppercase tracking-[0.28em] text-black/40">
@@ -180,7 +178,7 @@ export function Dashboard() {
                         <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-70" />
                         <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
                       </span>
-                      Create by voice
+                      Create a new form
                       <span className="transition group-hover:translate-x-0.5">
                         →
                       </span>
@@ -230,7 +228,7 @@ export function Dashboard() {
                   >
                     <Link
                       to={`/dashboard/${form.slug}`}
-                      className="grid gap-4 py-6 sm:gap-6 sm:py-8 md:grid-cols-[auto_1fr_auto_auto] md:items-baseline md:gap-12"
+                      className="grid gap-4 py-6 sm:gap-6 sm:py-8 md:grid-cols-[auto_1fr_auto_auto] md:items-center md:gap-12"
                     >
                       <span className="font-display text-xs text-black/40">
                         {String(i + 1).padStart(2, "0")}
@@ -264,19 +262,19 @@ export function Dashboard() {
                           </span>
                         </div>
                       </div>
-                      <span className="hidden text-[10px] uppercase tracking-[0.28em] text-black/40 md:block">
+                      <span className="hidden text-[10px] uppercase tracking-[0.28em] text-black/40 transition md:block md:group-hover:opacity-0">
                         {form.language?.toUpperCase() ?? "EN"}
                       </span>
                       <motion.span
-                        className="font-display text-2xl text-black/30 transition group-hover:text-black"
+                        className="font-display text-2xl text-black/30 transition group-hover:text-black md:group-hover:opacity-0"
                         whileHover={{ x: 4 }}
                       >
                         →
                       </motion.span>
                     </Link>
 
-                    {/* Row actions — always visible on mobile, hover on desktop */}
-                    <div className="flex gap-2 md:pointer-events-none md:absolute md:right-0 md:top-8 md:opacity-0 md:transition md:group-hover:pointer-events-auto md:group-hover:opacity-100">
+                    {/* Row actions — always visible on mobile, replace lang/arrow on hover on desktop */}
+                    <div className="flex gap-2 md:pointer-events-none md:absolute md:right-0 md:top-1/2 md:-translate-y-1/2 md:opacity-0 md:transition md:group-hover:pointer-events-auto md:group-hover:opacity-100">
                       <Link
                         to={`/dashboard/${form.slug}/edit`}
                         className="rounded-full border border-black/20 bg-white px-4 py-2 text-[10px] uppercase tracking-[0.24em] text-black transition hover:border-black"

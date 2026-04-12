@@ -21,7 +21,7 @@ type NavItem = {
 
 const NAV: NavItem[] = [
   { to: "/dashboard", label: "Forms", icon: FileText, matchPrefix: "/dashboard" },
-  { to: "/dashboard/new/voice", label: "Create by voice", icon: Mic },
+  { to: "/dashboard/new/voice", label: "Create a new form", icon: Mic },
 ];
 
 function isActive(pathname: string, item: NavItem): boolean {
