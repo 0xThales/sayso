@@ -15,12 +15,12 @@ type Agent = {
 
 const AGENTS: Agent[] = [
   {
-    id: "nadhi",
-    name: "Nadhi",
+    id: "emma",
+    name: "Emma",
     tagline: "Warm · Curious",
     description:
       "Listens closely and asks the gentle follow-ups that draw out the real answer.",
-    image: "/nadhi.png",
+    image: "/emma.png",
     voiceId: "cjVigY5qzO86Huf0OWal",
   },
   {
