@@ -54,12 +54,41 @@ export interface Form {
 export interface FormResponse {
   id: string;
   formId: string;
+  inviteId?: string | null;
   conversationId?: string | null;
   answers: Record<string, unknown>;
   completed: boolean;
   completedAt: string | null;
   duration: number | null;
   createdAt: string;
+}
+
+export type InviteStatus =
+  | "pending"
+  | "sent"
+  | "opened"
+  | "completed"
+  | "failed";
+
+export interface FormInvite {
+  id: string;
+  formId: string;
+  email: string;
+  token: string;
+  status: InviteStatus;
+  provider: string;
+  providerMessageId: string | null;
+  error: string | null;
+  sentAt: string | null;
+  openedAt: string | null;
+  completedAt: string | null;
+  createdAt: string;
+}
+
+export interface SendInvitesResult {
+  invites: FormInvite[];
+  sentCount: number;
+  failedCount: number;
 }
 
 type FormInput = {
@@ -79,6 +108,7 @@ type ResponseInputOptions = {
   completed?: boolean;
   duration?: number;
   conversationId?: string;
+  inviteToken?: string;
 };
 
 // ── Client setup ───────────────────────────────────────────────────────────
@@ -227,9 +257,47 @@ export async function createResponse(
         completed: options?.completed,
         duration: options?.duration,
         conversationId: options?.conversationId,
+        inviteToken: options?.inviteToken,
       }),
     },
     "Failed to create response",
+  );
+}
+
+// ── Invites ────────────────────────────────────────────────────────────────
+
+export async function fetchInvites(slug: string) {
+  return requestJson<FormInvite[]>(
+    `/forms/${slug}/invites`,
+    {
+      headers: await getAuthHeaders(),
+    },
+    "Failed to load invites",
+  );
+}
+
+export async function sendInvites(slug: string, emails: string[]) {
+  return requestJson<SendInvitesResult>(
+    `/forms/${slug}/invites`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(await getAuthHeaders()),
+      },
+      body: JSON.stringify({ emails }),
+    },
+    "Failed to send invites",
+  );
+}
+
+export async function markInviteOpened(slug: string, inviteToken: string) {
+  await requestJson<{ ok: true }>(
+    `/forms/${slug}/invites/${encodeURIComponent(inviteToken)}/open`,
+    {
+      method: "POST",
+    },
+    "Failed to track invite open",
   );
 }
 
@@ -237,7 +305,7 @@ export async function updateResponse(
   slug: string,
   responseId: string,
   answers: Record<string, unknown>,
-  options?: Omit<ResponseInputOptions, "conversationId">,
+  options?: Omit<ResponseInputOptions, "conversationId" | "inviteToken">,
 ) {
   return requestJson<FormResponse>(
     `/forms/${slug}/responses/${responseId}`,

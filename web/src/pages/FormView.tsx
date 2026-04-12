@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useParams } from "react-router";
+import { Link, useParams, useSearchParams } from "react-router";
 import {
   ConversationProvider,
   useConversation,
@@ -11,6 +11,7 @@ import {
   createResponse,
   fetchForm,
   FormNotFoundError,
+  markInviteOpened,
   updateResponse,
   type Form,
   type FormResponse,
@@ -106,7 +107,13 @@ function resolveFieldId(form: Form, params: SaveAnswerParams): string | null {
 
 // ── Voice Form Canvas ────────────────────────────────────────────────────────
 
-function VoiceFormCanvas({ form }: { form: Form }) {
+function VoiceFormCanvas({
+  form,
+  inviteToken,
+}: {
+  form: Form;
+  inviteToken: string | null;
+}) {
   const [answers, setAnswers] = useState<Record<string, string>>(() =>
     createInitialAnswers(form),
   );
@@ -276,6 +283,7 @@ function VoiceFormCanvas({ form }: { form: Form }) {
                 completed: completedFlag,
                 duration: getDurationSeconds(),
                 conversationId: conversationIdRef.current ?? undefined,
+                inviteToken: inviteToken ?? undefined,
               });
 
           responseIdRef.current = response.id;
@@ -1138,9 +1146,11 @@ function VoiceFormCanvas({ form }: { form: Form }) {
 
 export function FormView() {
   const { slug } = useParams<{ slug: string }>();
+  const [searchParams] = useSearchParams();
   const [form, setForm] = useState<Form | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
+  const inviteToken = searchParams.get("invite");
 
   useEffect(() => {
     if (!slug) return;
@@ -1155,6 +1165,11 @@ export function FormView() {
       .then((nextForm) => {
         if (cancelled) return;
         setForm(nextForm);
+        if (inviteToken) {
+          void markInviteOpened(slug, inviteToken).catch((trackingError) => {
+            console.warn("Failed to track invite open:", trackingError);
+          });
+        }
       })
       .catch((err) => {
         if (cancelled) return;
@@ -1169,7 +1184,7 @@ export function FormView() {
     return () => {
       cancelled = true;
     };
-  }, [slug]);
+  }, [inviteToken, slug]);
 
   if (notFound) return <NotFoundShell />;
   if (error) return <ErrorShell message={error} />;
@@ -1177,7 +1192,7 @@ export function FormView() {
 
   return (
     <ConversationProvider>
-      <VoiceFormCanvas key={form.slug} form={form} />
+      <VoiceFormCanvas key={form.slug} form={form} inviteToken={inviteToken} />
     </ConversationProvider>
   );
 }

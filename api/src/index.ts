@@ -6,6 +6,7 @@ import "dotenv/config";
 import { createDb, type Db } from "./db/index.js";
 import { elevenlabs } from "./routes/elevenlabs.js";
 import { forms } from "./routes/forms.js";
+import { invites } from "./routes/invites.js";
 import { responses } from "./routes/responses.js";
 import { webhooks } from "./routes/webhooks.js";
 
@@ -13,6 +14,20 @@ type Env = { Variables: { db: Db } };
 
 const DEFAULT_PORT = 3001;
 const db = process.env.DATABASE_URL ? createDb() : null;
+const allowedOrigins = new Set(
+  (process.env.ALLOWED_ORIGINS ?? "")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean),
+);
+
+function getCorsOrigin(origin?: string) {
+  if (!origin) return "*";
+  if (origin.includes("localhost")) return origin;
+  if (origin.endsWith(".vercel.app")) return origin;
+  if (allowedOrigins.has(origin)) return origin;
+  return null;
+}
 
 const requireDb: MiddlewareHandler<Env> = async (c, next) => {
   if (!db) {
@@ -35,12 +50,7 @@ const api = new Hono<Env>()
   .use(
     "*",
     cors({
-      origin: (origin) => {
-        if (!origin) return "*";
-        if (origin.includes("localhost")) return origin;
-        if (origin.endsWith(".vercel.app")) return origin;
-        return null as unknown as string;
-      },
+      origin: (origin) => getCorsOrigin(origin) ?? (null as unknown as string),
     }),
   )
   .get("/health", (c) => c.json({ status: "ok" }))
@@ -52,6 +62,7 @@ const api = new Hono<Env>()
   })
   .route("/elevenlabs", elevenlabs)
   .route("/forms", forms)
+  .route("/forms", invites)
   .route("/forms", responses)
   .route("/webhooks", webhooks);
 

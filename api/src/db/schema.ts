@@ -32,6 +32,51 @@ export const forms = pgTable("forms", {
     .defaultNow(),
 });
 
+// ── Form invites ────────────────────────────────────────────────────────────
+
+export type InviteStatus =
+  | "pending"
+  | "sent"
+  | "opened"
+  | "completed"
+  | "failed";
+
+export const formInvites = pgTable("form_invites", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => nanoid(12)),
+  formId: text("form_id")
+    .notNull()
+    .references(() => forms.id, { onDelete: "cascade" }),
+  email: text("email").notNull(),
+  token: text("token").notNull().unique(),
+  status: text("status").notNull().$type<InviteStatus>().default("pending"),
+  provider: text("provider").notNull().default("resend"),
+  providerMessageId: text("provider_message_id"),
+  error: text("error"),
+  sentAt: timestamp("sent_at", { withTimezone: true }),
+  openedAt: timestamp("opened_at", { withTimezone: true }),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export interface FormInvite {
+  id: string;
+  formId: string;
+  email: string;
+  token: string;
+  status: InviteStatus;
+  provider: string;
+  providerMessageId: string | null;
+  error: string | null;
+  sentAt: Date | null;
+  openedAt: Date | null;
+  completedAt: Date | null;
+  createdAt: Date;
+}
+
 // ── Responses ────────────────────────────────────────────────────────────────
 
 export const responses = pgTable("responses", {
@@ -41,6 +86,9 @@ export const responses = pgTable("responses", {
   formId: text("form_id")
     .notNull()
     .references(() => forms.id, { onDelete: "cascade" }),
+  inviteId: text("invite_id").references(() => formInvites.id, {
+    onDelete: "set null",
+  }),
   conversationId: text("conversation_id"),
   answers: jsonb("answers").notNull().$type<Record<string, unknown>>(),
   completed: boolean("completed").notNull().default(false),
@@ -115,6 +163,7 @@ export interface FormFieldDef {
 export interface FormResponse {
   id: string;
   formId: string;
+  inviteId: string | null;
   answers: Record<string, unknown>;
   completed: boolean;
   completedAt: Date | null;

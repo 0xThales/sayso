@@ -1,0 +1,1 @@
+ALTER TABLE "responses" ADD CONSTRAINT "responses_invite_id_form_invites_id_fk" FOREIGN KEY ("invite_id") REFERENCES "public"."form_invites"("id") ON DELETE set null ON UPDATE no action;
