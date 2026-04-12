@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router";
 import { createForm, fetchForm, updateForm, type FieldType, type FormField } from "@/lib/api";
+import { LoadingShell } from "@/components/ui/StatusShell";
 
 const FIELD_TYPES: { value: FieldType; label: string }[] = [
   { value: "text", label: "Text" },
@@ -102,18 +103,14 @@ export function FormEditor() {
   }
 
   if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-white text-stone-400">
-        Loading...
-      </div>
-    );
+    return <LoadingShell />;
   }
 
   return (
     <div className="min-h-screen bg-white">
       {/* Header */}
       <header className="border-b border-stone-200">
-        <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-5">
+        <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-4 sm:px-6 sm:py-5">
           <Link
             to="/dashboard"
             className="text-sm text-stone-500 transition hover:text-stone-900"
@@ -130,7 +127,7 @@ export function FormEditor() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-3xl px-6 py-12">
+      <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
         {/* Title & Description */}
         <section>
           <input
@@ -138,7 +135,7 @@ export function FormEditor() {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Form title"
-            className="w-full font-display text-4xl font-semibold tracking-tight placeholder:text-stone-300 focus:outline-none"
+            className="w-full font-display text-2xl font-semibold tracking-tight placeholder:text-stone-300 focus:outline-none sm:text-4xl"
           />
           <input
             type="text"
@@ -156,7 +153,7 @@ export function FormEditor() {
             {fields.map((field, i) => (
               <div
                 key={field.id}
-                className="rounded-xl border border-stone-200 px-5 py-4"
+                className="rounded-xl border border-stone-200 px-3 py-3 sm:px-5 sm:py-4"
               >
                 <div className="flex items-start gap-3">
                   <span className="mt-2 text-xs font-medium text-stone-400">
@@ -249,11 +246,11 @@ export function FormEditor() {
                       </div>
                     )}
                   </div>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-0.5 sm:gap-1">
                     <button
                       onClick={() => moveField(i, -1)}
                       disabled={i === 0}
-                      className="rounded p-1 text-stone-400 transition hover:text-stone-700 disabled:opacity-30"
+                      className="rounded p-2 text-stone-400 transition hover:text-stone-700 disabled:opacity-30 sm:p-1"
                       title="Move up"
                     >
                       &uarr;
@@ -261,7 +258,7 @@ export function FormEditor() {
                     <button
                       onClick={() => moveField(i, 1)}
                       disabled={i === fields.length - 1}
-                      className="rounded p-1 text-stone-400 transition hover:text-stone-700 disabled:opacity-30"
+                      className="rounded p-2 text-stone-400 transition hover:text-stone-700 disabled:opacity-30 sm:p-1"
                       title="Move down"
                     >
                       &darr;
@@ -269,7 +266,7 @@ export function FormEditor() {
                     <button
                       onClick={() => removeField(i)}
                       disabled={fields.length === 1}
-                      className="rounded p-1 text-stone-400 transition hover:text-red-500 disabled:opacity-30"
+                      className="rounded p-2 text-stone-400 transition hover:text-red-500 disabled:opacity-30 sm:p-1"
                       title="Remove"
                     >
                       &times;

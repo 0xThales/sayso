@@ -18,7 +18,7 @@ export function ThankYou({
 
       {/* Nav */}
       <nav className="sticky top-0 z-50 border-b border-black/10 bg-white/80 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-[1600px] items-center justify-between px-8 py-5">
+        <div className="mx-auto flex max-w-[1600px] items-center justify-between px-4 py-4 sm:px-6 md:px-8 md:py-5">
           <Link to="/" className="flex items-center gap-2.5">
             <motion.span
               className="inline-block h-2 w-2 rounded-full bg-black"
@@ -42,7 +42,7 @@ export function ThankYou({
       </nav>
 
       {/* Hero */}
-      <section className="relative mx-auto max-w-[1600px] px-8 pt-24 pb-16">
+      <section className="relative mx-auto max-w-[1600px] px-4 pt-12 pb-10 sm:px-6 sm:pt-16 md:px-8 md:pt-24 md:pb-16">
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -95,7 +95,7 @@ export function ThankYou({
 
       {/* Summary */}
       {answeredFields.length > 0 && (
-        <section className="relative mx-auto max-w-[1600px] px-8 pb-24">
+        <section className="relative mx-auto max-w-[1600px] px-4 pb-12 sm:px-6 md:px-8 md:pb-24">
           <div className="border-y border-black">
             <div className="flex items-center justify-between border-b border-black/10 py-6">
               <p className="text-[11px] uppercase tracking-[0.32em] text-black/50">
@@ -116,7 +116,7 @@ export function ThankYou({
                     duration: 0.6,
                     ease: [0.22, 1, 0.36, 1],
                   }}
-                  className="grid gap-6 py-8 md:grid-cols-[auto_1fr_2fr] md:items-baseline md:gap-12"
+                  className="grid gap-3 py-5 sm:gap-6 sm:py-8 md:grid-cols-[auto_1fr_2fr] md:items-baseline md:gap-12"
                 >
                   <p className="font-display text-sm text-black/40">
                     {String(i + 1).padStart(2, "0")}
@@ -136,7 +136,7 @@ export function ThankYou({
 
       {/* Footer */}
       <footer className="relative border-t border-black/10">
-        <div className="mx-auto flex max-w-[1600px] items-center justify-end px-8 py-8">
+        <div className="mx-auto flex max-w-[1600px] items-center justify-end px-4 py-6 sm:px-6 md:px-8 md:py-8">
           <Link
             to="/"
             className="text-[10px] uppercase tracking-[0.28em] text-black/60 transition hover:text-black"

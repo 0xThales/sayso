@@ -11,6 +11,8 @@
   "dependencies": {
     "@clerk/clerk-react": "^5.61.3",
     "@elevenlabs/react": "^1.0.3",
+    "@fontsource-variable/dm-sans": "^5.2.8",
+    "@fontsource-variable/fraunces": "^5.2.9",
     "framer-motion": "^12.38.0",
     "hono": "^4.12.12",
     "langfuse": "^3.38.20",

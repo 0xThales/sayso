@@ -4,6 +4,7 @@ import { UserButton } from "@clerk/clerk-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { fetchForms, deleteForm, type FormSummary } from "@/lib/api";
 import { Grain } from "@/components/ui/Grain";
+import { LoadingDots } from "@/components/ui/LoadingDots";
 import { Waveform } from "@/components/ui/Waveform";
 
 export function Dashboard() {
@@ -39,7 +40,7 @@ export function Dashboard() {
         transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
         className="sticky top-0 z-50 border-b border-black/10 bg-white/80 backdrop-blur-xl"
       >
-        <div className="mx-auto flex max-w-[1600px] items-center justify-between px-8 py-5">
+        <div className="mx-auto flex max-w-[1600px] items-center justify-between px-4 py-4 sm:px-6 md:px-8 md:py-5">
           <Link to="/" className="flex items-center gap-2.5">
             <motion.span
               className="inline-block h-2 w-2 rounded-full bg-black"
@@ -50,16 +51,17 @@ export function Dashboard() {
               sayso
             </span>
           </Link>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 sm:gap-4">
             <Link
               to="/dashboard/new/voice"
-              className="group inline-flex items-center gap-2 rounded-full bg-black px-6 py-3 text-sm font-medium text-white transition hover:-translate-y-0.5"
+              className="group inline-flex items-center gap-2 rounded-full bg-black px-4 py-2.5 text-xs font-medium text-white transition hover:-translate-y-0.5 sm:px-6 sm:py-3 sm:text-sm"
             >
               <span className="relative flex h-1.5 w-1.5">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-70" />
                 <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-white" />
               </span>
-              Create by voice
+              <span className="hidden sm:inline">Create by voice</span>
+              <span className="sm:hidden">Create</span>
               <span className="transition group-hover:translate-x-0.5">→</span>
             </Link>
             <div className="h-8 w-px bg-black/10" />
@@ -69,7 +71,7 @@ export function Dashboard() {
       </motion.nav>
 
       {/* Editorial header */}
-      <section className="relative mx-auto max-w-[1600px] px-8 pt-24 pb-16">
+      <section className="relative mx-auto max-w-[1600px] px-4 pt-12 pb-10 sm:px-6 sm:pt-16 md:px-8 md:pt-24 md:pb-16">
         <div className="mt-16">
           <h1 className="font-display text-[14vw] font-semibold leading-[0.85] tracking-[-0.04em] md:text-[11vw] lg:text-[10rem]">
             <div className="overflow-hidden">
@@ -127,7 +129,7 @@ export function Dashboard() {
       </section>
 
       {/* Body */}
-      <section className="relative mx-auto max-w-[1600px] px-8 pb-32">
+      <section className="relative mx-auto max-w-[1600px] px-4 pb-16 sm:px-6 md:px-8 md:pb-32">
         <AnimatePresence mode="wait">
           {loading ? (
             <motion.div
@@ -135,16 +137,9 @@ export function Dashboard() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="flex items-center gap-6 border-y border-black/10 py-20"
+              className="flex items-center justify-center border-y border-black/10 py-20"
             >
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 1.2, repeat: Infinity, ease: "linear" }}
-                className="h-5 w-5 rounded-full border-2 border-black/20 border-t-black"
-              />
-              <span className="text-[11px] uppercase tracking-[0.32em] text-black/50">
-                Loading your forms…
-              </span>
+              <LoadingDots />
             </motion.div>
           ) : error ? (
             <motion.div
@@ -167,7 +162,7 @@ export function Dashboard() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="relative border-y border-black py-24 md:py-32"
+              className="relative border-y border-black py-16 sm:py-24 md:py-32"
             >
               <div className="grid gap-16 md:grid-cols-[1fr_auto_1fr] md:items-center">
                 <div className="hidden md:block">
@@ -217,7 +212,7 @@ export function Dashboard() {
                   >
                     <Link
                       to="/dashboard/new/voice"
-                      className="group inline-flex items-center gap-3 rounded-full bg-black px-8 py-5 text-sm font-medium text-white transition hover:-translate-y-0.5"
+                      className="group inline-flex items-center gap-3 rounded-full bg-black px-6 py-4 text-sm font-medium text-white transition hover:-translate-y-0.5 sm:px-8 sm:py-5"
                     >
                       <span className="relative flex h-2 w-2">
                         <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-70" />
@@ -273,7 +268,7 @@ export function Dashboard() {
                   >
                     <Link
                       to={`/dashboard/${form.slug}`}
-                      className="grid gap-6 py-8 md:grid-cols-[auto_1fr_auto_auto] md:items-baseline md:gap-12"
+                      className="grid gap-4 py-6 sm:gap-6 sm:py-8 md:grid-cols-[auto_1fr_auto_auto] md:items-baseline md:gap-12"
                     >
                       <span className="font-display text-xs text-black/40">
                         {String(i + 1).padStart(2, "0")}
@@ -318,8 +313,8 @@ export function Dashboard() {
                       </motion.span>
                     </Link>
 
-                    {/* Row actions */}
-                    <div className="pointer-events-none absolute right-0 top-8 flex gap-2 opacity-0 transition group-hover:pointer-events-auto group-hover:opacity-100">
+                    {/* Row actions — always visible on mobile, hover on desktop */}
+                    <div className="flex gap-2 md:pointer-events-none md:absolute md:right-0 md:top-8 md:opacity-0 md:transition md:group-hover:pointer-events-auto md:group-hover:opacity-100">
                       <Link
                         to={`/dashboard/${form.slug}/edit`}
                         className="rounded-full border border-black/20 bg-white px-4 py-2 text-[10px] uppercase tracking-[0.24em] text-black transition hover:border-black"
@@ -349,7 +344,7 @@ export function Dashboard() {
 
       {/* Footer */}
       <footer className="relative border-t border-black/10">
-        <div className="mx-auto flex max-w-[1600px] items-center justify-end px-8 py-8">
+        <div className="mx-auto flex max-w-[1600px] items-center justify-end px-4 py-6 sm:px-6 md:px-8 md:py-8">
           <Link
             to="/"
             className="text-[10px] uppercase tracking-[0.28em] text-black/60 transition hover:text-black"

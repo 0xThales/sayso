@@ -511,7 +511,7 @@ function CreatorCanvas({ voiceId }: { voiceId?: string }) {
         initial={{ y: -40, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-        className="relative z-20 flex items-center justify-between px-8 py-5"
+        className="relative z-20 flex items-center justify-between px-4 py-4 sm:px-6 md:px-8 md:py-5"
       >
         <Link
           to="/dashboard"
@@ -530,7 +530,7 @@ function CreatorCanvas({ voiceId }: { voiceId?: string }) {
             sayso
           </span>
         </div>
-        <div className="min-w-[60px] text-right text-[10px] uppercase tracking-[0.28em] text-black/50">
+        <div className="text-right text-[10px] uppercase tracking-[0.28em] text-black/50 sm:min-w-[60px]">
           {fieldCount > 0 ? (
             <span>
               {String(fieldCount).padStart(2, "0")}{" "}
@@ -543,7 +543,7 @@ function CreatorCanvas({ voiceId }: { voiceId?: string }) {
       </motion.nav>
 
       {/* Main layout */}
-      <section className="relative z-10 grid min-h-[calc(100vh-5rem)] lg:grid-cols-[1fr_auto_1fr]">
+      <section className="relative z-10 grid min-h-[calc(100dvh-5rem)] lg:grid-cols-[1fr_auto_1fr]">
         {/* Left: live agent transcript */}
         <div className="hidden flex-col justify-center px-8 lg:flex">
           <AnimatePresence mode="wait">
@@ -568,7 +568,7 @@ function CreatorCanvas({ voiceId }: { voiceId?: string }) {
         </div>
 
         {/* Center: editorial heading + orb */}
-        <div className="flex flex-col items-center justify-center px-8 py-16">
+        <div className="flex flex-col items-center justify-center px-4 py-10 sm:px-6 sm:py-16 md:px-8">
           {/* Eyebrow */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}

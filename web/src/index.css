@@ -1,8 +1,12 @@
 @import "tailwindcss";
+@import "@fontsource-variable/dm-sans/index.css";
+@import "@fontsource-variable/dm-sans/wght-italic.css";
+@import "@fontsource-variable/fraunces/index.css";
+@import "@fontsource-variable/fraunces/wght-italic.css";
 
 @theme {
-  --font-display: "Fraunces", serif;
-  --font-body: "DM Sans", sans-serif;
+  --font-display: "Fraunces Variable", "Fraunces", serif;
+  --font-body: "DM Sans Variable", "DM Sans", sans-serif;
 
   --color-cream: #FFF8F0;
   --color-coral: #FF6B5A;
@@ -18,4 +22,5 @@ body {
 
 #root {
   min-height: 100vh;
+  min-height: 100dvh;
 }

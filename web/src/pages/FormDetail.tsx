@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router";
+import { LoadingShell } from "@/components/ui/StatusShell";
 import { QRCodeCanvas } from "qrcode.react";
 import {
   fetchForm,
@@ -61,7 +62,7 @@ function ResponseCard({
   const title = nameField ? String(response.answers[nameField.id] ?? "Unnamed") : "Unnamed";
 
   return (
-    <div className="border-l-[3px] border-coral pl-6">
+    <div className="border-l-[3px] border-coral pl-4 sm:pl-6">
       <div className="mb-7">
         <h3 className="font-display text-2xl font-semibold tracking-tight">
           {title}
@@ -123,8 +124,8 @@ function ShareTab({
         Share this link with respondents. They'll talk to a voice agent
         that walks them through your form.
       </p>
-      <div className="mt-4 flex items-center gap-3">
-        <code className="flex-1 rounded-xl border border-stone-200 bg-white px-4 py-3 text-sm">
+      <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+        <code className="min-w-0 flex-1 truncate rounded-xl border border-stone-200 bg-white px-3 py-3 text-xs sm:px-4 sm:text-sm">
           {shareUrl}
         </code>
         <button
@@ -133,7 +134,7 @@ function ShareTab({
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
           }}
-          className={`rounded-full border px-4 py-2.5 text-sm transition ${
+          className={`shrink-0 rounded-full border px-4 py-2.5 text-sm transition ${
             copied
               ? "border-emerald-200 bg-emerald-50 text-emerald-600"
               : "border-stone-200 hover:bg-stone-50"
@@ -144,7 +145,7 @@ function ShareTab({
       </div>
 
       {/* QR Code */}
-      <div className="mt-8 flex flex-col items-center gap-4 rounded-2xl border border-stone-200 bg-white p-8">
+      <div className="mt-8 flex flex-col items-center gap-4 rounded-2xl border border-stone-200 bg-white p-5 sm:p-8">
         <div ref={qrRef}>
           <QRCodeCanvas
             value={shareUrl}
@@ -267,11 +268,7 @@ export function FormDetail() {
   }
 
   if (loading || !form) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-white text-stone-400">
-        Loading...
-      </div>
-    );
+    return <LoadingShell />;
   }
 
   const shareUrl = `${window.location.origin}/f/${form.slug}`;
@@ -280,7 +277,7 @@ export function FormDetail() {
     <div className="min-h-screen bg-stone-50">
       {/* Header */}
       <header className="border-b border-stone-200 bg-white">
-        <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-5">
+        <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-4 sm:px-6 sm:py-5">
           <Link
             to="/dashboard"
             className="text-sm text-stone-500 transition hover:text-stone-900"
@@ -290,13 +287,13 @@ export function FormDetail() {
           <div className="flex items-center gap-2">
             <Link
               to={`/dashboard/${form.slug}/edit`}
-              className="rounded-full border border-stone-200 px-4 py-2 text-sm transition hover:bg-stone-50"
+              className="rounded-full border border-stone-200 px-3 py-2 text-xs transition hover:bg-stone-50 sm:px-4 sm:text-sm"
             >
               Edit
             </Link>
             <button
               onClick={handleDelete}
-              className="rounded-full border border-stone-200 px-4 py-2 text-sm text-red-500 transition hover:bg-red-50"
+              className="rounded-full border border-stone-200 px-3 py-2 text-xs text-red-500 transition hover:bg-red-50 sm:px-4 sm:text-sm"
             >
               Delete
             </button>
@@ -304,8 +301,8 @@ export function FormDetail() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-3xl px-6 py-12">
-        <h1 className="font-display text-4xl font-semibold tracking-tight">
+      <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
+        <h1 className="font-display text-2xl font-semibold tracking-tight sm:text-4xl">
           {form.title}
         </h1>
         {form.description && (

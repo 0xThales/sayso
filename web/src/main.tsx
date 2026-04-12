@@ -14,8 +14,7 @@ import { FormEditor } from "./pages/FormEditor";
 import { FormDetail } from "./pages/FormDetail";
 import { VoiceFormCreator } from "./pages/VoiceFormCreator";
 import { AgentSelect } from "./pages/AgentSelect";
-import { SignInPage } from "./pages/SignInPage";
-import { SignUpPage } from "./pages/SignUpPage";
+import { AuthPage } from "./pages/AuthPage";
 import "./index.css";
 
 const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
@@ -41,12 +40,12 @@ createRoot(document.getElementById("root")!).render(
       publishableKey={CLERK_PUBLISHABLE_KEY}
       signInUrl="/sign-in"
       signUpUrl="/sign-up"
-      afterSignOutUrl="/"
+      afterSignOutUrl="/sign-in"
     >
       <BrowserRouter>
         <Routes>
-          <Route path="sign-in/*" element={<SignInPage />} />
-          <Route path="sign-up/*" element={<SignUpPage />} />
+          <Route path="sign-in/*" element={<AuthPage mode="sign-in" />} />
+          <Route path="sign-up/*" element={<AuthPage mode="sign-up" />} />
           <Route element={<App />}>
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="f/:slug" element={<FormView />} />

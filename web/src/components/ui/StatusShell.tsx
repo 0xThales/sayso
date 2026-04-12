@@ -1,6 +1,7 @@
 import { Link } from "react-router";
 import { motion } from "framer-motion";
 import { Grain } from "./Grain";
+import { LoadingDots } from "./LoadingDots";
 
 export function StatusShell({
   kicker,
@@ -58,11 +59,7 @@ export function LoadingShell() {
         </>
       }
     >
-      <motion.div
-        animate={{ rotate: 360 }}
-        transition={{ duration: 1.2, repeat: Infinity, ease: "linear" }}
-        className="mt-2 h-6 w-6 rounded-full border-2 border-black/20 border-t-black"
-      />
+      <LoadingDots />
     </StatusShell>
   );
 }

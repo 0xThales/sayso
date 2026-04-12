@@ -530,7 +530,7 @@ function VoiceFormCanvas({ form }: { form: Form }) {
         transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
         className="sticky top-0 z-50 border-b border-black/10 bg-white/80 backdrop-blur-xl"
       >
-        <div className="mx-auto flex max-w-[1600px] items-center justify-between px-8 py-5">
+        <div className="mx-auto flex max-w-[1600px] items-center justify-between px-4 py-4 sm:px-6 md:px-8 md:py-5">
           <Link to="/" className="flex items-center gap-2.5">
             <motion.span
               className="inline-block h-2 w-2 rounded-full bg-black"
@@ -555,7 +555,7 @@ function VoiceFormCanvas({ form }: { form: Form }) {
           </div>
           <Link
             to="/"
-            className="rounded-full border border-black/20 px-5 py-2.5 text-sm font-medium text-black transition hover:border-black"
+            className="rounded-full border border-black/20 px-4 py-2 text-xs font-medium text-black transition hover:border-black sm:px-5 sm:py-2.5 sm:text-sm"
           >
             ← Back
           </Link>
@@ -563,7 +563,7 @@ function VoiceFormCanvas({ form }: { form: Form }) {
       </motion.nav>
 
       {/* Editorial header */}
-      <section className="relative mx-auto max-w-[1600px] px-8 pt-20 pb-16">
+      <section className="relative mx-auto max-w-[1600px] px-4 pt-10 pb-10 sm:px-6 sm:pt-14 md:px-8 md:pt-20 md:pb-16">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -637,17 +637,17 @@ function VoiceFormCanvas({ form }: { form: Form }) {
       </section>
 
       {/* Main grid */}
-      <section className="relative mx-auto max-w-[1600px] px-8 pb-24">
+      <section className="relative mx-auto max-w-[1600px] px-4 pb-12 sm:px-6 md:px-8 md:pb-24">
         <div className="grid gap-px border-y border-black bg-black lg:grid-cols-[1.3fr_1fr]">
           {/* Left: Control + Transcript */}
           <div className="flex flex-col bg-white">
-            <div className="border-b border-black/10 p-8 lg:p-12">
+            <div className="border-b border-black/10 p-4 sm:p-6 lg:p-12">
               <div className="flex items-start justify-between gap-6">
                 <div>
                   <p className="text-[10px] uppercase tracking-[0.32em] text-black/50">
                     § 01 — The session
                   </p>
-                  <h2 className="mt-4 font-display text-4xl font-semibold leading-[0.95] md:text-5xl">
+                  <h2 className="mt-3 font-display text-2xl font-semibold leading-[0.95] sm:mt-4 sm:text-4xl md:text-5xl">
                     {isConnected ? (
                       <>
                         Live. <em className="italic">Just talk.</em>
@@ -677,8 +677,8 @@ function VoiceFormCanvas({ form }: { form: Form }) {
                 </div>
               </div>
 
-              <div className="mt-10 grid gap-px overflow-hidden border border-black/10 bg-black md:grid-cols-[1.2fr_0.8fr]">
-                <div className="bg-white p-6">
+              <div className="mt-6 grid gap-px overflow-hidden border border-black/10 bg-black sm:mt-10 md:grid-cols-[1.2fr_0.8fr]">
+                <div className="bg-white p-4 sm:p-6">
                   <div className="flex items-center justify-between gap-4">
                     <p className="text-[10px] uppercase tracking-[0.28em] text-black/45">
                       Current question
@@ -687,7 +687,7 @@ function VoiceFormCanvas({ form }: { form: Form }) {
                       {currentQuestionNumber}/{totalQuestions}
                     </p>
                   </div>
-                  <p className="mt-4 font-display text-2xl leading-tight text-black">
+                  <p className="mt-3 font-display text-xl leading-tight text-black sm:mt-4 sm:text-2xl">
                     {currentField ? currentField.label : "All questions answered."}
                   </p>
                   <div className="mt-6 h-2 overflow-hidden rounded-full bg-black/10">
@@ -701,11 +701,11 @@ function VoiceFormCanvas({ form }: { form: Form }) {
                     {answeredCount} complete · {remainingCount} remaining
                   </p>
                 </div>
-                <div className="bg-[#f3efe6] p-6 text-black">
+                <div className="bg-[#f3efe6] p-4 text-black sm:p-6">
                   <p className="text-[10px] uppercase tracking-[0.28em] text-black/45">
                     Database sync
                   </p>
-                  <p className="mt-4 font-display text-2xl leading-tight">
+                  <p className="mt-3 font-display text-xl leading-tight sm:mt-4 sm:text-2xl">
                     {saveState === "error"
                       ? "Needs retry."
                       : saveState === "saved"
@@ -721,7 +721,7 @@ function VoiceFormCanvas({ form }: { form: Form }) {
               </div>
 
               {/* Waveform bar */}
-              <div className="mt-10 flex items-center gap-6 border-y border-black/10 py-8">
+              <div className="mt-6 flex items-center gap-3 border-y border-black/10 py-5 sm:mt-10 sm:gap-6 sm:py-8">
                 <div className="flex items-center gap-3">
                   <motion.span
                     className={`h-2 w-2 rounded-full ${
@@ -753,7 +753,7 @@ function VoiceFormCanvas({ form }: { form: Form }) {
               </div>
 
               {/* Buttons */}
-              <div className="mt-10 flex flex-wrap items-center gap-3">
+              <div className="mt-6 flex flex-wrap items-center gap-2 sm:mt-10 sm:gap-3">
                 <motion.button
                   type="button"
                   onClick={() => void handleStart()}
@@ -764,7 +764,7 @@ function VoiceFormCanvas({ form }: { form: Form }) {
                       : {}
                   }
                   whileTap={{ scale: 0.98 }}
-                  className="group inline-flex items-center gap-3 rounded-full bg-black px-8 py-4 text-sm font-medium text-white transition disabled:cursor-not-allowed disabled:opacity-40"
+                  className="group inline-flex items-center gap-2 rounded-full bg-black px-5 py-3 text-xs font-medium text-white transition disabled:cursor-not-allowed disabled:opacity-40 sm:gap-3 sm:px-8 sm:py-4 sm:text-sm"
                 >
                   <span className="relative flex h-2 w-2">
                     {isConnected && (
@@ -791,22 +791,22 @@ function VoiceFormCanvas({ form }: { form: Form }) {
                   type="button"
                   onClick={() => void conversation.endSession()}
                   disabled={!isConnected}
-                  className="rounded-full border border-black/20 px-6 py-4 text-sm font-medium text-black transition hover:border-black disabled:cursor-not-allowed disabled:opacity-40"
+                  className="rounded-full border border-black/20 px-4 py-3 text-xs font-medium text-black transition hover:border-black disabled:cursor-not-allowed disabled:opacity-40 sm:px-6 sm:py-4 sm:text-sm"
                 >
                   End session
                 </button>
                 <button
                   type="button"
                   onClick={() => conversation.setMuted(!conversation.isMuted)}
-                  className="rounded-full border border-black/20 px-6 py-4 text-sm font-medium text-black transition hover:border-black"
+                  className="rounded-full border border-black/20 px-4 py-3 text-xs font-medium text-black transition hover:border-black sm:px-6 sm:py-4 sm:text-sm"
                 >
-                  {conversation.isMuted ? "Unmute mic" : "Mute mic"}
+                  {conversation.isMuted ? "Unmute" : "Mute"}
                 </button>
               </div>
             </div>
 
             {/* Transcript */}
-            <div className="flex flex-1 flex-col p-8 lg:p-12">
+            <div className="flex flex-1 flex-col p-4 sm:p-6 lg:p-12">
               <div className="flex items-center justify-between">
                 <p className="text-[10px] uppercase tracking-[0.32em] text-black/50">
                   § 02 — Live transcript
@@ -882,11 +882,11 @@ function VoiceFormCanvas({ form }: { form: Form }) {
 
           {/* Right: Captured answers */}
           <aside className="flex flex-col bg-black text-white">
-            <div className="border-b border-white/10 p-8 lg:p-10">
+            <div className="border-b border-white/10 p-4 sm:p-6 lg:p-10">
               <p className="text-[10px] uppercase tracking-[0.32em] text-white/50">
                 § 03 — Progress
               </p>
-              <h2 className="mt-4 font-display text-4xl font-semibold leading-[0.95] md:text-5xl">
+              <h2 className="mt-3 font-display text-2xl font-semibold leading-[0.95] sm:mt-4 sm:text-4xl md:text-5xl">
                 Question by <em className="italic">question</em>.
               </h2>
               <p className="mt-5 max-w-md text-sm leading-7 text-white/60">
@@ -945,7 +945,7 @@ function VoiceFormCanvas({ form }: { form: Form }) {
                       delay: 0.5 + index * 0.06,
                       ease: [0.22, 1, 0.36, 1],
                     }}
-                    className={`relative px-8 py-6 lg:px-10 ${
+                    className={`relative px-4 py-4 sm:px-6 sm:py-6 lg:px-10 ${
                       isCurrent ? "bg-white/[0.03]" : ""
                     }`}
                   >
@@ -1023,7 +1023,7 @@ function VoiceFormCanvas({ form }: { form: Form }) {
             </div>
 
             {/* Completion banner */}
-            <div className="border-t border-white/10 p-8 lg:p-10">
+            <div className="border-t border-white/10 p-4 sm:p-6 lg:p-10">
               <AnimatePresence mode="wait">
                 {submitting || saveState === "saving" ? (
                   <motion.div
@@ -1095,7 +1095,7 @@ function VoiceFormCanvas({ form }: { form: Form }) {
         </div>
 
         {/* Progress bar */}
-        <div className="mt-8 grid gap-4 border border-black/10 px-6 py-5 md:grid-cols-[auto_1fr_auto] md:items-center">
+        <div className="mt-4 grid gap-3 border border-black/10 px-4 py-4 sm:mt-8 sm:gap-4 sm:px-6 sm:py-5 md:grid-cols-[auto_1fr_auto] md:items-center">
           <span className="text-[10px] uppercase tracking-[0.28em] text-black/50">
             Form progress
           </span>
@@ -1121,7 +1121,7 @@ function VoiceFormCanvas({ form }: { form: Form }) {
 
       {/* Footer */}
       <footer className="relative border-t border-black/10">
-        <div className="mx-auto flex max-w-[1600px] items-center justify-end px-8 py-8">
+        <div className="mx-auto flex max-w-[1600px] items-center justify-end px-4 py-6 sm:px-6 md:px-8 md:py-8">
           <Link
             to="/"
             className="text-[10px] uppercase tracking-[0.28em] text-black/60 transition hover:text-black"

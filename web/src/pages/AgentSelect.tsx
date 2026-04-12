@@ -123,7 +123,7 @@ export function AgentSelect() {
         initial={{ y: -40, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-        className="relative z-20 flex items-center justify-between px-8 py-5"
+        className="relative z-20 flex items-center justify-between px-4 py-4 sm:px-6 md:px-8 md:py-5"
       >
         <Link
           to="/dashboard"
@@ -142,13 +142,13 @@ export function AgentSelect() {
             sayso
           </span>
         </div>
-        <div className="min-w-[60px] text-right text-[10px] uppercase tracking-[0.28em] text-black/50">
+        <div className="text-right text-[10px] uppercase tracking-[0.28em] text-black/50 sm:min-w-[60px]">
           Step 01 / 02
         </div>
       </motion.nav>
 
       {/* Hero */}
-      <section className="relative z-10 mx-auto flex max-w-6xl flex-col items-center px-8 pt-10 pb-20">
+      <section className="relative z-10 mx-auto flex max-w-6xl flex-col items-center px-4 pt-8 pb-12 sm:px-6 sm:pt-10 sm:pb-20 md:px-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -205,7 +205,7 @@ export function AgentSelect() {
         </motion.p>
 
         {/* Cards */}
-        <div className="mt-20 grid w-full grid-cols-1 gap-14 md:grid-cols-2 md:gap-10 lg:gap-20">
+        <div className="mt-12 grid w-full grid-cols-1 gap-10 sm:mt-20 sm:gap-14 md:grid-cols-2 md:gap-10 lg:gap-20">
           {AGENTS.map((agent, i) => (
             <div key={agent.id} className="flex justify-center">
               <AgentCard
