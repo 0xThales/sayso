@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
-import { UserButton } from "@clerk/clerk-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { fetchForms, deleteForm, type FormSummary } from "@/lib/api";
 import { Grain } from "@/components/ui/Grain";
@@ -32,43 +31,6 @@ export function Dashboard() {
   return (
     <main className="relative min-h-screen overflow-hidden bg-white text-black font-body">
       <Grain />
-
-      {/* Nav */}
-      <motion.nav
-        initial={{ y: -40, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-        className="sticky top-0 z-50 border-b border-black/10 bg-white/80 backdrop-blur-xl"
-      >
-        <div className="mx-auto flex max-w-[1600px] items-center justify-between px-4 py-4 sm:px-6 md:px-8 md:py-5">
-          <Link to="/" className="flex items-center gap-2.5">
-            <motion.span
-              className="inline-block h-2 w-2 rounded-full bg-black"
-              animate={{ scale: [1, 1.4, 1] }}
-              transition={{ duration: 1.8, repeat: Infinity }}
-            />
-            <span className="font-display text-2xl font-semibold tracking-tight">
-              sayso
-            </span>
-          </Link>
-          <div className="flex items-center gap-3 sm:gap-4">
-            <Link
-              to="/dashboard/new/voice"
-              className="group inline-flex items-center gap-2 rounded-full bg-black px-4 py-2.5 text-xs font-medium text-white transition hover:-translate-y-0.5 sm:px-6 sm:py-3 sm:text-sm"
-            >
-              <span className="relative flex h-1.5 w-1.5">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-70" />
-                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-white" />
-              </span>
-              <span className="hidden sm:inline">Create by voice</span>
-              <span className="sm:hidden">Create</span>
-              <span className="transition group-hover:translate-x-0.5">→</span>
-            </Link>
-            <div className="h-8 w-px bg-black/10" />
-            <UserButton />
-          </div>
-        </div>
-      </motion.nav>
 
       {/* Editorial header */}
       <section className="relative mx-auto max-w-[1600px] px-4 pt-12 pb-10 sm:px-6 sm:pt-16 md:px-8 md:pt-24 md:pb-16">

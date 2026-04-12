@@ -15,6 +15,7 @@ import { FormDetail } from "./pages/FormDetail";
 import { VoiceFormCreator } from "./pages/VoiceFormCreator";
 import { AgentSelect } from "./pages/AgentSelect";
 import { AuthPage } from "./pages/AuthPage";
+import { DashboardLayout } from "./components/layout/DashboardLayout";
 import "./index.css";
 
 const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
@@ -50,53 +51,22 @@ createRoot(document.getElementById("root")!).render(
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="f/:slug" element={<FormView />} />
             <Route
-              path="dashboard"
               element={
                 <ProtectedRoute>
-                  <Dashboard />
+                  <DashboardLayout />
                 </ProtectedRoute>
               }
-            />
-            <Route
-              path="dashboard/new"
-              element={
-                <ProtectedRoute>
-                  <FormEditor />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="dashboard/new/voice"
-              element={
-                <ProtectedRoute>
-                  <AgentSelect />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="dashboard/new/voice/create"
-              element={
-                <ProtectedRoute>
-                  <VoiceFormCreator />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="dashboard/:slug"
-              element={
-                <ProtectedRoute>
-                  <FormDetail />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="dashboard/:slug/edit"
-              element={
-                <ProtectedRoute>
-                  <FormEditor />
-                </ProtectedRoute>
-              }
-            />
+            >
+              <Route path="dashboard" element={<Dashboard />} />
+              <Route path="dashboard/new" element={<FormEditor />} />
+              <Route path="dashboard/new/voice" element={<AgentSelect />} />
+              <Route
+                path="dashboard/new/voice/create"
+                element={<VoiceFormCreator />}
+              />
+              <Route path="dashboard/:slug" element={<FormDetail />} />
+              <Route path="dashboard/:slug/edit" element={<FormEditor />} />
+            </Route>
           </Route>
         </Routes>
       </BrowserRouter>
