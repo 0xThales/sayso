@@ -6,6 +6,7 @@ import "dotenv/config";
 import { createDb, type Db } from "./db/index.js";
 import { elevenlabs } from "./routes/elevenlabs.js";
 import { forms } from "./routes/forms.js";
+import { invites } from "./routes/invites.js";
 import { responses } from "./routes/responses.js";
 import { webhooks } from "./routes/webhooks.js";
 
@@ -52,6 +53,7 @@ const api = new Hono<Env>()
   })
   .route("/elevenlabs", elevenlabs)
   .route("/forms", forms)
+  .route("/forms", invites)
   .route("/forms", responses)
   .route("/webhooks", webhooks);
 

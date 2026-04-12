@@ -18,6 +18,31 @@ function buildCompletedAt(completed: boolean | undefined, fallback: Date | null)
   return fallback;
 }
 
+async function markInviteCompleted(db: Db, inviteId: string) {
+  const [invite] = await db
+    .select({
+      id: schema.formInvites.id,
+      openedAt: schema.formInvites.openedAt,
+      completedAt: schema.formInvites.completedAt,
+    })
+    .from(schema.formInvites)
+    .where(eq(schema.formInvites.id, inviteId))
+    .limit(1);
+
+  if (!invite || invite.completedAt) return;
+
+  const now = new Date();
+
+  await db
+    .update(schema.formInvites)
+    .set({
+      status: "completed",
+      openedAt: invite.openedAt ?? now,
+      completedAt: now,
+    })
+    .where(eq(schema.formInvites.id, invite.id));
+}
+
 // ── Routes (chained for Hono RPC type inference) ─────────────────────────────
 
 const responses = new Hono<Env>()
@@ -40,12 +65,29 @@ const responses = new Hono<Env>()
     completed?: boolean;
     duration?: number;
     conversationId?: string;
+    inviteToken?: string;
   }>();
+
+  const [invite] = body.inviteToken
+    ? await db
+        .select({
+          id: schema.formInvites.id,
+        })
+        .from(schema.formInvites)
+        .where(
+          and(
+            eq(schema.formInvites.formId, form.id),
+            eq(schema.formInvites.token, body.inviteToken),
+          ),
+        )
+        .limit(1)
+    : [];
 
   const [response] = await db
     .insert(schema.responses)
     .values({
       formId: form.id,
+      inviteId: invite?.id ?? null,
       conversationId: body.conversationId,
       answers: body.answers,
       completed: body.completed ?? true,
@@ -55,6 +97,9 @@ const responses = new Hono<Env>()
     .returning();
 
   const created = response!;
+  if (created.completed && created.inviteId) {
+    await markInviteCompleted(db, created.inviteId);
+  }
   await publishFormResponseCreated(form.id, created);
 
   return c.json(created, 201);
@@ -77,6 +122,7 @@ const responses = new Hono<Env>()
   const [existingResponse] = await db
     .select({
       id: schema.responses.id,
+      inviteId: schema.responses.inviteId,
       completedAt: schema.responses.completedAt,
     })
     .from(schema.responses)
@@ -113,6 +159,9 @@ const responses = new Hono<Env>()
     .returning();
 
   const updated = response!;
+  if (updated.completed && existingResponse.inviteId) {
+    await markInviteCompleted(db, existingResponse.inviteId);
+  }
   await publishFormResponseUpdated(form.id, updated);
 
   return c.json(updated);

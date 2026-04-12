@@ -56,7 +56,7 @@ const useCases = [
 
 function Waveform({ bars = 24, className = "" }: { bars?: number; className?: string }) {
   return (
-    <div className={`flex h-16 items-end gap-1 ${className}`}>
+    <div className={`flex h-16 items-end gap-1 overflow-hidden min-w-0 ${className}`}>
       {Array.from({ length: bars }).map((_, i) => (
         <motion.span
           key={i}
@@ -290,7 +290,7 @@ export default function Landing({ appUrl }: { appUrl: string }) {
       </motion.section>
 
       {/* Marquee strip */}
-      <section className="relative border-y border-black/10 bg-black py-8 text-white">
+      <section className="relative overflow-hidden border-y border-black/10 bg-black py-8 text-white">
         <motion.div
           className="flex gap-16 whitespace-nowrap"
           animate={{ x: ["0%", "-50%"] }}
