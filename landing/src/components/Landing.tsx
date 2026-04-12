@@ -528,7 +528,7 @@ export default function Landing({ appUrl }: { appUrl: string }) {
       </section>
 
       {/* Developers */}
-      <section id="developers" className="relative border-t border-black/10 bg-white py-32">
+      <section id="developers" className="relative overflow-hidden border-t border-black/10 bg-white py-32">
         <div className="mx-auto max-w-[1600px] px-8">
           <div className="grid gap-20 lg:grid-cols-[1fr_1.1fr] lg:items-center">
             <Reveal>
