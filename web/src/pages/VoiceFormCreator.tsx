@@ -434,7 +434,7 @@ function CreatorCanvas({ voiceId }: { voiceId?: string }) {
           agent: {
             prompt: { prompt: buildFormCreatorPrompt(voiceId) },
             firstMessage:
-              "Hey! Tell me what you need — what's this form for and who's going to fill it out?",
+              "Tell me the form you want and any questions you already know. I'll keep this quick.",
             language: "en" as const,
           },
           ...(voiceId ? { tts: { voiceId } } : {}),

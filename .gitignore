@@ -3,6 +3,12 @@ dist
 .env
 .env.local
 .env.*.local
+api/.env
+api/.env.local
+web/.env
+web/.env.local
+landing/.env
+landing/.env.local
 .DS_Store
 .vercel
 .turbo
@@ -11,4 +17,3 @@ dist
 
 # Astro generated
 landing/.astro/
-landing/.env

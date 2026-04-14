@@ -73,6 +73,12 @@ Copy the `.env.example` file in each workspace.
 **`landing/.env`**
 - `PUBLIC_APP_URL` (e.g. `https://app.sayso.com`)
 
+Notes:
+- `agent_configs/Sayso-Intake.json` is a local reference snapshot, not the runtime source of truth.
+- Creator sessions override the prompt and first message from the frontend at runtime.
+- Remote ElevenLabs agent configuration is still the source of truth for registered tools.
+- Run `pnpm audit:elevenlabs` to compare the active `api/.env` agent, the local JSON snapshot, and the live remote agent.
+
 ## Observability
 
 Three layers linked by a shared `conversationId`:

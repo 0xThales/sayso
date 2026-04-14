@@ -11,6 +11,7 @@
     "dev:landing": "turbo dev --filter=landing",
     "build": "turbo build",
     "type-check": "turbo type-check",
+    "audit:elevenlabs": "node scripts/audit-elevenlabs-config.mjs",
     "clean": "rm -rf node_modules web/node_modules api/node_modules .turbo",
     "reset": "pnpm clean && pnpm install"
   },
