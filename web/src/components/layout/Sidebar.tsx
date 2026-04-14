@@ -21,7 +21,7 @@ type NavItem = {
 
 const NAV: NavItem[] = [
   { to: "/dashboard", label: "Forms", icon: FileText, matchPrefix: "/dashboard" },
-  { to: "/dashboard/new/voice", label: "Create by voice", icon: Mic },
+  { to: "/dashboard/new/voice", label: "Create a new form", icon: Mic },
 ];
 
 function isActive(pathname: string, item: NavItem): boolean {
@@ -35,9 +35,10 @@ function isActive(pathname: string, item: NavItem): boolean {
 type SidebarProps = {
   open: boolean;
   onToggle: () => void;
+  onClose: () => void;
 };
 
-export function Sidebar({ open, onToggle }: SidebarProps) {
+export function Sidebar({ open, onToggle, onClose }: SidebarProps) {
   const { pathname } = useLocation();
 
   return (
@@ -52,11 +53,26 @@ export function Sidebar({ open, onToggle }: SidebarProps) {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -8 }}
             transition={{ duration: 0.18 }}
-            className="fixed left-4 top-4 z-50 hidden h-8 w-8 items-center justify-center rounded-full text-black/50 transition hover:bg-black/5 hover:text-black md:inline-flex"
+            className="fixed left-4 top-4 z-50 inline-flex h-9 w-9 items-center justify-center rounded-full border border-black/10 bg-white text-black/60 shadow-sm transition hover:bg-black/5 hover:text-black md:h-8 md:w-8 md:border-0 md:bg-transparent md:shadow-none"
             aria-label="Open sidebar"
           >
             <PanelLeftOpen size={16} strokeWidth={1.75} />
           </motion.button>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            key="backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            onClick={onClose}
+            className="fixed inset-0 z-30 bg-black/40 md:hidden"
+            aria-hidden="true"
+          />
         )}
       </AnimatePresence>
 
@@ -68,7 +84,7 @@ export function Sidebar({ open, onToggle }: SidebarProps) {
             animate={{ x: 0 }}
             exit={{ x: -272 }}
             transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-            className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-black/10 bg-white md:flex"
+            className="fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-black/10 bg-white"
           >
             {/* Logo + collapse */}
             <div className="flex h-20 items-center justify-between border-b border-black/10 px-6">
@@ -211,7 +227,7 @@ function UserBadge() {
             animate={{ opacity: 1, x: 0, scale: 1 }}
             exit={{ opacity: 0, x: -6, scale: 0.98 }}
             transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
-            className="absolute bottom-4 left-[calc(100%+0.75rem)] z-50 w-64 overflow-hidden rounded-2xl border border-black/10 bg-white shadow-lg"
+            className="absolute bottom-[calc(100%-0.5rem)] left-4 right-4 z-50 overflow-hidden rounded-2xl border border-black/10 bg-white shadow-lg md:bottom-4 md:left-[calc(100%+0.75rem)] md:right-auto md:w-64"
           >
             <div className="border-b border-black/10 px-5 py-4">
               <p className="text-[10px] uppercase tracking-[0.28em] text-black/40">

@@ -26,7 +26,7 @@ Turborepo with three pnpm workspaces:
 
 Two personalities, selectable per form:
 
-- **Nadhi** — warm, curious, gentle follow-ups
+- **Emma** — warm, curious, gentle follow-ups
 - **Tim** — direct, witty, efficient
 
 Personality prompts live in `web/src/lib/prompt.ts`. Full agent config is in `agent_configs/Sayso-Intake.json`.
